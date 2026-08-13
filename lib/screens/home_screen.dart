@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/day_entry.dart';
+import '../models/user_profile.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/day_row_widget.dart';
@@ -20,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _storage = StorageService();
   final _auth = AuthService();
+
+  UserProfile? _profile;
 
   Future<void> _handleLogout() async {
     await _auth.logout();
@@ -46,6 +49,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadMonth();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final p = await _auth.getProfile();
+    if (!mounted) return;
+    setState(() => _profile = p);
   }
 
   int _daysInMonth(int y, int m) => DateTime(y, m + 1, 0).day;
@@ -186,33 +196,99 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _header() {
+    final name = (_profile?.name.isNotEmpty ?? false) ? _profile!.name.toUpperCase() : '';
+    final id = _profile?.employeeId ?? '';
+    final company = _profile?.company ?? '';
+    final address = _profile?.address ?? '';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFF2E2A82), Color(0xFF3730A3), Color(0xFF0369A1)],
         ),
+        boxShadow: [BoxShadow(color: const Color(0xFF3730A3).withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('MONTHLY DUTY & OT', style: TextStyle(color: Color(0xFFA5F3FC), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 2)),
-                SizedBox(height: 4),
-                Text('Statement', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-              ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Monthly Duty & Payout Summary',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, height: 1.25)),
+                    SizedBox(height: 4),
+                    Text('Track Duty, OT & Estimated Earnings',
+                        style: TextStyle(color: Color(0xFFA5F3FC), fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _handleLogout,
+                icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
+                tooltip: 'Logout',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          if (name.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.16)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.person, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name,
+                            style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                            overflow: TextOverflow.ellipsis),
+                        if (id.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text('ID: $id', style: const TextStyle(color: Color(0xFFCBD5F5), fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                        if (company.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(company, style: const TextStyle(color: Color(0xFFCBD5F5), fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                        if (address.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(address,
+                              style: const TextStyle(color: Color(0xFFA5B4D6), fontSize: 11, height: 1.3),
+                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: _handleLogout,
-            icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
-            tooltip: 'Logout',
-          ),
+          ],
         ],
       ),
     );
