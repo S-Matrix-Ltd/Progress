@@ -105,6 +105,23 @@ class AuthService {
     return null;
   }
 
+  /// Settings screen theke profile info (name/ID/company/address) update.
+  /// Username o password change hoy na ei function diye.
+  Future<void> updateProfile({
+    required String name,
+    required String employeeId,
+    required String company,
+    required String address,
+  }) async {
+    final profile = await getProfile();
+    if (profile == null) return;
+    profile.name = name;
+    profile.employeeId = employeeId;
+    profile.company = company;
+    profile.address = address;
+    await _saveProfile(profile);
+  }
+
   /// Kono sensitive kaj (reset / mark-unmark) korar age password verify.
   Future<bool> verifyPassword(String password) async {
     final profile = await getProfile();

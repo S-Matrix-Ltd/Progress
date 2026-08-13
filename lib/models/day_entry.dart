@@ -46,3 +46,24 @@ class RateSettings {
         rateGross: (json['rateGross'] as num?)?.toDouble() ?? 0,
       );
 }
+
+/// Data History screen-e ekta mash-er summary dekhanor jonne.
+class MonthSummary {
+  final int year;
+  final int month;
+  final double otHours;
+  final int night;
+  final int duty;
+  final int dayOff;
+  final double total;
+
+  MonthSummary({
+    required this.year,
+    required this.month,
+    required this.otHours,
+    required this.night,
+    required this.duty,
+    required this.dayOff,
+    required this.total,
+  });
+}

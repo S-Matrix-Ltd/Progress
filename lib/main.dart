@@ -3,8 +3,27 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'services/auth_service.dart';
+import 'services/settings_service.dart';
 
-void main() {
+/// Global theme controller — Settings screen theke update hoy,
+/// MaterialApp eta listen kore reactively rebuild hoy.
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+
+ThemeMode themeModeFromString(String v) {
+  switch (v) {
+    case 'light':
+      return ThemeMode.light;
+    case 'dark':
+      return ThemeMode.dark;
+    default:
+      return ThemeMode.system;
+  }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final settings = await SettingsService().load();
+  themeNotifier.value = themeModeFromString(settings.theme);
   runApp(const DutyOtApp());
 }
 
@@ -13,16 +32,30 @@ class DutyOtApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Monthly Duty & OT Statement',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Roboto',
-        colorSchemeSeed: const Color(0xFF3730A3),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFEEF2F6),
-      ),
-      home: const AuthGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Monthly Duty & OT Statement',
+          debugShowCheckedModeBanner: false,
+          themeMode: mode,
+          theme: ThemeData(
+            fontFamily: 'Roboto',
+            colorSchemeSeed: const Color(0xFF3730A3),
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xFFEEF2F6),
+            brightness: Brightness.light,
+          ),
+          darkTheme: ThemeData(
+            fontFamily: 'Roboto',
+            colorSchemeSeed: const Color(0xFF3730A3),
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xFF0F172A),
+            brightness: Brightness.dark,
+          ),
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }

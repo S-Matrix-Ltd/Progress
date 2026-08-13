@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../models/app_settings.dart';
 import '../models/day_entry.dart';
 import '../models/user_profile.dart';
 import '../services/storage_service.dart';
+import '../services/settings_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/day_row_widget.dart';
 import 'login_screen.dart';
+import 'settings_screen.dart';
 
 const List<String> kMonthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -21,8 +24,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _storage = StorageService();
   final _auth = AuthService();
+  final _settingsService = SettingsService();
 
   UserProfile? _profile;
+  AppSettings _appSettings = AppSettings();
 
   Future<void> _handleLogout() async {
     await _auth.logout();
@@ -31,6 +36,15 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    // Settings e rate/profile change hote pare, tai fire ei firey eshe reload.
+    if (!mounted) return;
+    await _loadProfile();
+    await _loadMonth();
+    await _loadAppSettings();
   }
 
   int year = DateTime.now().year;
@@ -50,6 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadMonth();
     _loadProfile();
+    _loadAppSettings();
+  }
+
+  Future<void> _loadAppSettings() async {
+    final s = await _settingsService.load();
+    if (!mounted) return;
+    setState(() => _appSettings = s);
   }
 
   Future<void> _loadProfile() async {
@@ -230,6 +251,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              IconButton(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.settings, color: Colors.white70, size: 22),
+                tooltip: 'Settings',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 6),
               IconButton(
                 onPressed: _handleLogout,
                 icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
@@ -494,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Text('TOTAL AMOUNT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
           const SizedBox(height: 4),
           Text(
-            totalAmount.toStringAsFixed(2),
+            '${_appSettings.currencySymbol} ${totalAmount.toStringAsFixed(2)}',
             style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 28, fontWeight: FontWeight.w900),
           ),
         ],
