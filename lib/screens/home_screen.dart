@@ -5,6 +5,9 @@ import '../models/user_profile.dart';
 import '../services/storage_service.dart';
 import '../services/settings_service.dart';
 import '../services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../constants.dart';
+import '../services/pdf_service.dart';
 import '../widgets/day_row_widget.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
@@ -25,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _storage = StorageService();
   final _auth = AuthService();
   final _settingsService = SettingsService();
+  final _pdfService = PdfService();
 
   UserProfile? _profile;
   AppSettings _appSettings = AppSettings();
@@ -138,11 +142,43 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  void _onStatusTap(int idx, String type) {
+  /// Password prompt — Reset o Unmark-er moto sensitive kaj-e use hoy.
+  Future<bool> _promptPassword(String title) async {
+    final ctrl = TextEditingController();
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+        ],
+      ),
+    );
+    if (proceed != true) return false;
+    final ok = await _auth.verifyPassword(ctrl.text);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Password bhul'), backgroundColor: Color(0xFFB91C1C)));
+    }
+    return ok;
+  }
+
+  Future<void> _onStatusTap(int idx, String type) async {
     final entry = days[idx];
     final statuses = List<String>.from(entry.statuses);
 
     if (statuses.contains(type)) {
+      // Unmark korte password lagbe — bhul kore click hoye gele
+      // accidentally data muche jabe na.
+      final verified = await _promptPassword('Unmark korte Password din');
+      if (!verified) return;
       statuses.remove(type);
     } else {
       if (type == 'dayoff') {
@@ -170,6 +206,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _handleReset() async {
+    final verified = await _promptPassword('Reset korte Password din');
+    if (!verified) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -210,9 +248,98 @@ class _HomeScreenState extends State<HomeScreen> {
             _totalDisplay(),
             const SizedBox(height: 14),
             _actionButtons(),
+            const SizedBox(height: 14),
+            _colorLegend(),
+            const SizedBox(height: 14),
+            _footer(),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _handleExportPdf() async {
+    final rates = RateSettings(
+      rateOT: double.tryParse(rateOTCtrl.text) ?? 0,
+      rateNight: double.tryParse(rateNightCtrl.text) ?? 0,
+      rateOFF: double.tryParse(rateOFFCtrl.text) ?? 0,
+      rateGross: double.tryParse(rateGrossCtrl.text) ?? 0,
+    );
+    await _pdfService.exportMonth(
+      profile: _profile,
+      year: year,
+      month: month,
+      days: days,
+      rates: rates,
+      totOT: totOT,
+      totNight: totNight,
+      totDuty: totDuty,
+      totDayOff: totDayOff,
+      totalAmount: totalAmount,
+      currencySymbol: _appSettings.currencySymbol,
+    );
+  }
+
+  Widget _colorLegend() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('COLOR INDICATOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF475569))),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 14,
+            runSpacing: 8,
+            children: [
+              _legendChip(kNight, 'Night Duty'),
+              _legendChip(kDuty, 'Regular Duty'),
+              _legendChip(kDayoff, 'Day Off'),
+              _legendChip(kAmberCombo, 'Night + Duty'),
+              _legendChip(kWeekendBg, 'Weekend (Thu/Fri)'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendChip(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 14, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _footer() {
+    return Column(
+      children: [
+        Text('Progress App • v$kAppVersion', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: () async {
+            final uri = Uri.parse(kReleasesUrl);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else if (mounted) {
+              _showMsg('Link open kora gelo na.');
+            }
+          },
+          child: const Text('Check for Updates', style: TextStyle(fontSize: 11.5)),
+        ),
+        const SizedBox(height: 2),
+        Text(kDeveloperCredit, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+        const SizedBox(height: 10),
+      ],
     );
   }
 
@@ -536,7 +663,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () => _showMsg('PDF export Phase 2 e add hobe.'),
+            onPressed: _handleExportPdf,
             icon: const Icon(Icons.picture_as_pdf, size: 18),
             label: const Text('Export PDF'),
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3730A3), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
