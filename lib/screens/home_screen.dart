@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/day_entry.dart';
 import '../services/storage_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/day_row_widget.dart';
+import 'login_screen.dart';
 
 const List<String> kMonthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -17,6 +19,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _storage = StorageService();
+  final _auth = AuthService();
+
+  Future<void> _handleLogout() async {
+    await _auth.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
 
   int year = DateTime.now().year;
   int month = DateTime.now().month;
@@ -184,12 +196,23 @@ class _HomeScreenState extends State<HomeScreen> {
           colors: [Color(0xFF2E2A82), Color(0xFF3730A3), Color(0xFF0369A1)],
         ),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text('MONTHLY DUTY & OT', style: TextStyle(color: Color(0xFFA5F3FC), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 2)),
-          SizedBox(height: 4),
-          Text('Statement', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('MONTHLY DUTY & OT', style: TextStyle(color: Color(0xFFA5F3FC), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                SizedBox(height: 4),
+                Text('Statement', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: _handleLogout,
+            icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
+            tooltip: 'Logout',
+          ),
         ],
       ),
     );
