@@ -66,8 +66,10 @@ class AuthService {
     return null; // null মানে error nei, success
   }
 
-  /// Login attempt. Success hole null, fail hole error message ferot dey.
-  Future<String?> login(String username, String password) async {
+  /// Login attempt. rememberMe true hole login state save thakbe
+  /// (app abar khulle direct Home dekhabe). false hole shudhu ei
+  /// session-er jonne login thakbe, app abar khulle Login chaibe.
+  Future<String?> login(String username, String password, {bool rememberMe = true}) async {
     final profile = await getProfile();
     if (profile == null) {
       return 'Kono account registered nei. Age Register korun.';
@@ -76,8 +78,10 @@ class AuthService {
         profile.passwordHash != hashPassword(password)) {
       return 'Username ba Password bhul hoyeche';
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_loggedInKey, true);
+    if (rememberMe) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_loggedInKey, true);
+    }
     return null;
   }
 
@@ -106,5 +110,29 @@ class AuthService {
     final profile = await getProfile();
     if (profile == null) return false;
     return profile.passwordHash == hashPassword(password);
+  }
+
+  /// Forgot Password flow: Username + Employee ID mile identity verify
+  /// hoy (email/SMS backend nei bole ei simple upay), tারপর notun
+  /// password set kora jay.
+  Future<String?> resetPasswordWithIdentity({
+    required String username,
+    required String employeeId,
+    required String newPassword,
+  }) async {
+    final profile = await getProfile();
+    if (profile == null) {
+      return 'Kono account registered nei';
+    }
+    if (profile.username.trim().toLowerCase() != username.trim().toLowerCase() ||
+        profile.employeeId.trim().toLowerCase() != employeeId.trim().toLowerCase()) {
+      return 'Username ba Employee ID mile ni';
+    }
+    if (newPassword.length < 4) {
+      return 'Notun Password kompokkhe 4 character hote hobe';
+    }
+    profile.passwordHash = hashPassword(newPassword);
+    await _saveProfile(profile);
+    return null;
   }
 }

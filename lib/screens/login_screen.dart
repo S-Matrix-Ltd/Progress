@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 const Color kLoginPrimary = Color(0xFF3730A3);
 
@@ -19,11 +20,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _loading = false;
   bool _obscure = true;
+  bool _rememberMe = true;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    final error = await _auth.login(_usernameCtrl.text, _passwordCtrl.text);
+    final error = await _auth.login(_usernameCtrl.text, _passwordCtrl.text, rememberMe: _rememberMe);
     setState(() => _loading = false);
     if (!mounted) return;
     if (error != null) {
@@ -112,7 +114,37 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (v) => (v == null || v.isEmpty) ? 'Password lagbe' : null,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Checkbox(
+                                      value: _rememberMe,
+                                      onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                                      activeColor: kLoginPrimary,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    const Text('Remember Me', style: TextStyle(fontSize: 12.5, color: Color(0xFF334155))),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                  );
+                                },
+                                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                                child: const Text('Forgot Password?', style: TextStyle(fontSize: 12.5)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
                           _loading
                               ? const Center(child: CircularProgressIndicator())
                               : ElevatedButton(
