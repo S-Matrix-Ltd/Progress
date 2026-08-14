@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -12,7 +13,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
 import '../services/pdf_service.dart';
 import '../widgets/day_row_widget.dart';
-import 'login_screen.dart';
 import 'settings_screen.dart';
 
 const List<String> kMonthNames = [
@@ -38,15 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onGlobalSettingsChanged() {
     if (mounted) setState(() {});
-  }
-
-  Future<void> _handleLogout() async {
-    await _auth.logout();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
   }
 
   Future<void> _openSettings() async {
@@ -409,16 +400,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               IconButton(
                 onPressed: _openSettings,
-                icon: const Icon(Icons.settings, color: Colors.white70, size: 22),
+                icon: const Icon(Icons.menu, color: Colors.white70, size: 24),
                 tooltip: tr('settings'),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                onPressed: _handleLogout,
-                icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
-                tooltip: tr('logout'),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -442,8 +425,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(12),
+                      image: (_profile?.photoPath != null)
+                          ? DecorationImage(image: FileImage(File(_profile!.photoPath!)), fit: BoxFit.cover)
+                          : null,
                     ),
-                    child: const Icon(Icons.person, color: Colors.white, size: 24),
+                    child: (_profile?.photoPath == null) ? const Icon(Icons.person, color: Colors.white, size: 24) : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(

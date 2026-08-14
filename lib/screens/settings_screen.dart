@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -38,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<MonthSummary> _months = [];
   bool _loading = true;
   bool _dirty = false;
+  String? _photoPath;
 
   @override
   void initState() {
@@ -55,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _idCtrl.text = profile.employeeId;
       _companyCtrl.text = profile.company;
       _addressCtrl.text = profile.address;
+      _photoPath = profile.photoPath;
     }
     if (rates != null) {
       _rateOTCtrl.text = _numStr(rates.rateOT);
@@ -82,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       employeeId: _idCtrl.text.trim(),
       company: _companyCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
+      photoPath: _photoPath,
     );
     await _storage.saveRates(RateSettings(
       rateOT: double.tryParse(_rateOTCtrl.text) ?? 0,
@@ -185,6 +191,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return '$h12:${m.toString().padLeft(2, '0')} $period';
   }
 
+  /// Gallery theke chobi pick kore, app-er nijer documents folder-e
+  /// stable naam die copy kore rakhe (temp cache path bhorosajogyo na,
+  /// tai copy kora hoy).
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 600);
+    if (picked == null) return;
+    final dir = await getApplicationDocumentsDirectory();
+    final savedPath = '${dir.path}/profile_photo.jpg';
+    await File(picked.path).copy(savedPath);
+    if (!mounted) return;
+    setState(() => _photoPath = savedPath);
+    _markDirty();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -210,6 +230,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _sectionTitle(tr('profile_info'), primary),
             _card([
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 38,
+                      backgroundColor: primary.withOpacity(0.15),
+                      backgroundImage: _photoPath != null ? FileImage(File(_photoPath!)) : null,
+                      child: _photoPath == null ? Icon(Icons.person, size: 38, color: primary) : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: InkWell(
+                        onTap: _pickPhoto,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(color: primary, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                          child: const Icon(Icons.camera_alt, size: 15, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               _textField('Name', _nameCtrl),
               _textField('Employee ID', _idCtrl),
               _textField('Company', _companyCtrl),

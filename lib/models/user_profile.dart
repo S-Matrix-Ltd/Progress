@@ -7,6 +7,7 @@ class UserProfile {
   String address;
   String username;
   String passwordHash;
+  String? photoPath;
 
   UserProfile({
     required this.name,
@@ -15,6 +16,7 @@ class UserProfile {
     required this.address,
     required this.username,
     required this.passwordHash,
+    this.photoPath,
   });
 
   Map<String, dynamic> toJson() => {
@@ -24,6 +26,7 @@ class UserProfile {
         'address': address,
         'username': username,
         'passwordHash': passwordHash,
+        'photoPath': photoPath,
       };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -33,5 +36,6 @@ class UserProfile {
         address: json['address'] as String? ?? '',
         username: json['username'] as String? ?? '',
         passwordHash: json['passwordHash'] as String? ?? '',
+        photoPath: json['photoPath'] as String?,
       );
 }
