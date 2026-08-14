@@ -10,9 +10,11 @@ const List<String> _kMonthNames = [
 ];
 const List<String> _kWeekdayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/// Month-er pura statement ke ekta shundor PDF banay, tarpor
-/// share/print/save korar jonne native dialog open kore
-/// (Printing.layoutPdf ei kaj ta cross-platform vabe handle kore).
+/// Month-er pura statement ke ekta compact, single-page A4 PDF banay
+/// (extra "Rates Used" breakdown baad deya hoyeche — shudhu essential
+/// table + summary + total thake, jate ekta A4 page-eii pura mash
+/// (28-31 din) fit hoye jay), tarpor share/print/save korar jonne
+/// native dialog open kore.
 class PdfService {
   Future<void> exportMonth({
     required UserProfile? profile,
@@ -29,122 +31,146 @@ class PdfService {
   }) async {
     final doc = pw.Document();
 
+    // Note: MultiPage use kora hoyeche (Page na) — content already
+    // ekta A4 page-er moddhei fit korar jonne tight kore banano, kintu
+    // MultiPage nirapod: kono karone content bere gele (e.g. 31-din
+    // mash + boro font device) crash na kore automatically 2nd page-e
+    // continue kore, single overflow exception er jhuki thake na.
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
-        header: (context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text('Monthly Duty & Payout Summary',
-                style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-            pw.Text('${_kMonthNames[month - 1]} $year', style: const pw.TextStyle(fontSize: 12)),
-            pw.SizedBox(height: 8),
-            if (profile != null) ...[
-              if (profile.name.isNotEmpty)
-                pw.Text(profile.name, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-              if (profile.employeeId.isNotEmpty)
-                pw.Text('ID: ${profile.employeeId}', style: const pw.TextStyle(fontSize: 10)),
-              if (profile.company.isNotEmpty) pw.Text(profile.company, style: const pw.TextStyle(fontSize: 10)),
-              if (profile.address.isNotEmpty) pw.Text(profile.address, style: const pw.TextStyle(fontSize: 10)),
-            ],
-            pw.SizedBox(height: 6),
-            pw.Divider(),
-          ],
-        ),
+        margin: const pw.EdgeInsets.fromLTRB(24, 20, 24, 16),
         build: (context) => [
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            columnWidths: const {
-              0: pw.FlexColumnWidth(3),
-              1: pw.FlexColumnWidth(1.3),
-              2: pw.FlexColumnWidth(1.3),
-              3: pw.FlexColumnWidth(1.3),
-              4: pw.FlexColumnWidth(1.3),
-            },
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.indigo100),
-                children: [
-                  _cell('DATE', bold: true),
-                  _cell('OT', bold: true, center: true),
-                  _cell('N', bold: true, center: true),
-                  _cell('D', bold: true, center: true),
-                  _cell('OFF', bold: true, center: true),
-                ],
-              ),
-              ...List.generate(days.length, (i) {
-                final d = i + 1;
-                final date = DateTime(year, month, d);
-                final wd = date.weekday;
-                final dateLabel =
-                    '${d.toString().padLeft(2, '0')}.${month.toString().padLeft(2, '0')}.$year (${_kWeekdayShort[wd % 7]})';
-                final e = days[i];
-                return pw.TableRow(children: [
-                  _cell(dateLabel),
-                  _cell(_num(e.ot), center: true),
-                  _cell(e.hasNight ? 'Y' : '', center: true),
-                  _cell(e.hasDuty ? 'Y' : '', center: true),
-                  _cell(e.hasDayoff ? 'Y' : '', center: true),
-                ]);
-              }),
-            ],
-          ),
-          pw.SizedBox(height: 16),
-          pw.Text('Rates Used', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
-          pw.Text(
-            'OT/hr: $currencySymbol${_num(rates.rateOT)}   Night: $currencySymbol${_num(rates.rateNight)}   '
-            'Off: $currencySymbol${_num(rates.rateOFF)}   Gross: $currencySymbol${_num(rates.rateGross)}',
-            style: const pw.TextStyle(fontSize: 10),
-          ),
-          pw.SizedBox(height: 12),
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              _summaryBox('OT Hours', _num(totOT)),
-              _summaryBox('Night', '$totNight'),
-              _summaryBox('Duty', '$totDuty'),
-              _summaryBox('Day Off', '$totDayOff'),
-            ],
-          ),
-          pw.SizedBox(height: 16),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(color: PdfColors.indigo900, borderRadius: pw.BorderRadius.circular(8)),
-            child: pw.Row(
+            _header(profile, year, month),
+            pw.SizedBox(height: 8),
+            pw.Divider(thickness: 0.7, color: PdfColors.grey400),
+            pw.SizedBox(height: 6),
+            _table(days, year, month),
+            pw.SizedBox(height: 10),
+            pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('TOTAL AMOUNT',
-                    style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-                pw.Text('$currencySymbol ${totalAmount.toStringAsFixed(2)}',
-                    style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                _summaryBox('OT Hours', _num(totOT)),
+                _summaryBox('Night', '$totNight'),
+                _summaryBox('Duty', '$totDuty'),
+                _summaryBox('Day Off', '$totDayOff'),
               ],
             ),
+            pw.SizedBox(height: 10),
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: pw.BoxDecoration(color: PdfColors.indigo900, borderRadius: pw.BorderRadius.circular(6)),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('TOTAL AMOUNT',
+                      style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                  pw.Text('$currencySymbol ${totalAmount.toStringAsFixed(2)}',
+                      style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 15)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text('Generated by Progress App',
+                style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey)),
+            ],
           ),
         ],
-        footer: (context) => pw.Text('Generated by Progress App',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey)),
       ),
     );
 
     await Printing.layoutPdf(onLayout: (format) async => doc.save());
   }
 
+  pw.Widget _header(UserProfile? profile, int year, int month) {
+    final name = profile?.name ?? '';
+    final id = profile?.employeeId ?? '';
+    final company = profile?.company ?? '';
+    final metaBits = [
+      if (id.isNotEmpty) 'ID: $id',
+      if (company.isNotEmpty) company,
+    ].join('   •   ');
+
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Monthly Duty & Payout Summary',
+                style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold)),
+            if (name.isNotEmpty)
+              pw.Text(name, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+            if (metaBits.isNotEmpty)
+              pw.Text(metaBits, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+          ],
+        ),
+        pw.Text('${_kMonthNames[month - 1]} $year',
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+      ],
+    );
+  }
+
+  pw.Widget _table(List<DayEntry> days, int year, int month) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(3),
+        1: pw.FlexColumnWidth(1),
+        2: pw.FlexColumnWidth(1.2),
+        3: pw.FlexColumnWidth(1.2),
+        4: pw.FlexColumnWidth(1.2),
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.indigo100),
+          children: [
+            _cell('DATE', bold: true),
+            _cell('OT', bold: true, center: true),
+            _cell('NIGHT', bold: true, center: true),
+            _cell('DUTY', bold: true, center: true),
+            _cell('OFF', bold: true, center: true),
+          ],
+        ),
+        ...List.generate(days.length, (i) {
+          final d = i + 1;
+          final date = DateTime(year, month, d);
+          final wd = date.weekday;
+          final dateLabel =
+              '${d.toString().padLeft(2, '0')}.${month.toString().padLeft(2, '0')}.$year (${_kWeekdayShort[wd % 7]})';
+          final e = days[i];
+          return pw.TableRow(children: [
+            _cell(dateLabel),
+            _cell(_num(e.ot), center: true),
+            _cell(e.hasNight ? 'Y' : '', center: true),
+            _cell(e.hasDuty ? 'Y' : '', center: true),
+            _cell(e.hasDayoff ? 'Y' : '', center: true),
+          ]);
+        }),
+      ],
+    );
+  }
+
   String _num(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
 
   pw.Widget _cell(String text, {bool bold = false, bool center = false}) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        padding: const pw.EdgeInsets.symmetric(vertical: 2.5, horizontal: 4),
         child: pw.Text(
           text,
           textAlign: center ? pw.TextAlign.center : pw.TextAlign.left,
-          style: pw.TextStyle(fontSize: 9, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
+          style: pw.TextStyle(fontSize: 8, fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal),
         ),
       );
 
   pw.Widget _summaryBox(String label, String value) => pw.Column(
         children: [
-          pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13)),
-          pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+          pw.Text(value, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 12)),
+          pw.Text(label, style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
         ],
       );
 }
