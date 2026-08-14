@@ -26,7 +26,8 @@ jobs:
         run: |
           sed -i -E 's/(compileSdk(Version)?)[[:space:]]+.*/\1 35/' android/app/build.gradle
           sed -i -E 's/(targetSdk(Version)?)[[:space:]]+.*/\1 35/' android/app/build.gradle
-          cat android/app/build.gradle | grep -i "sdk"
+          sed -i -E '/compileSdk(Version)? 35/a\    buildToolsVersion "35.0.0"' android/app/build.gradle
+          cat android/app/build.gradle | grep -i "sdk\|buildTools"
 
       - run: flutter pub get
 
