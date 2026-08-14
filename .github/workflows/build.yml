@@ -22,6 +22,11 @@ jobs:
         run: |
           sed -i 's/android:label="[^"]*"/android:label="Progress"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Bump Android compile/target SDK to 35
+        run: |
+          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 35/' android/app/build.gradle
+          sed -i 's/targetSdk flutter.targetSdkVersion/targetSdk 35/' android/app/build.gradle
+
       - run: flutter pub get
 
       - run: flutter build apk --release
