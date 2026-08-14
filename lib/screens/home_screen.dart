@@ -257,8 +257,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 14),
             _monthPicker(),
             const SizedBox(height: 14),
-            _rateSettingsCard(),
-            const SizedBox(height: 14),
             _dayTableCard(),
             const SizedBox(height: 14),
             _summaryGrid(),
@@ -501,63 +499,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _rateSettingsCard() {
-    final opt = themeOptionFor(themeNotifier.value);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: opt.primary, width: 4)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
-      ),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        title: Text(tr('rate_settings'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: opt.primary)),
-        children: [
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 2.4,
-            children: [
-              _rateField(tr('ot_rate'), rateOTCtrl),
-              _rateField(tr('night_rate'), rateNightCtrl),
-              _rateField(tr('off_rate'), rateOFFCtrl),
-              _rateField(tr('gross_rate'), rateGrossCtrl),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _rateField(String label, TextEditingController ctrl) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFCBD5E1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF475569))),
-          TextFormField(
-            controller: ctrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            decoration: const InputDecoration(isDense: true, border: InputBorder.none),
-            onChanged: (_) => _recalc(),
           ),
         ],
       ),
