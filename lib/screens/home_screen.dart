@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -425,11 +424,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.18),
                       borderRadius: BorderRadius.circular(12),
-                      image: (_profile?.photoPath != null)
-                          ? DecorationImage(image: FileImage(File(_profile!.photoPath!)), fit: BoxFit.cover)
-                          : null,
                     ),
-                    child: (_profile?.photoPath == null) ? const Icon(Icons.person, color: Colors.white, size: 24) : null,
+                    child: const Icon(Icons.person, color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

@@ -106,14 +106,12 @@ class AuthService {
   }
 
   /// Settings screen theke profile info (name/ID/company/address) update.
-  /// Username o password change hoy na ei function diye. photoPath dile
-  /// shudhu tokhon photo update hobe, na dile purono thakbe.
+  /// Username o password change hoy na ei function diye.
   Future<void> updateProfile({
     required String name,
     required String employeeId,
     required String company,
     required String address,
-    String? photoPath,
   }) async {
     final profile = await getProfile();
     if (profile == null) return;
@@ -121,7 +119,6 @@ class AuthService {
     profile.employeeId = employeeId;
     profile.company = company;
     profile.address = address;
-    if (photoPath != null) profile.photoPath = photoPath;
     await _saveProfile(profile);
   }
 
