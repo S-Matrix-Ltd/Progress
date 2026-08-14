@@ -24,8 +24,9 @@ jobs:
 
       - name: Bump Android compile/target SDK to 35
         run: |
-          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 35/' android/app/build.gradle
-          sed -i 's/targetSdk flutter.targetSdkVersion/targetSdk 35/' android/app/build.gradle
+          sed -i -E 's/(compileSdk(Version)?)[[:space:]]+.*/\1 35/' android/app/build.gradle
+          sed -i -E 's/(targetSdk(Version)?)[[:space:]]+.*/\1 35/' android/app/build.gradle
+          cat android/app/build.gradle | grep -i "sdk"
 
       - run: flutter pub get
 
