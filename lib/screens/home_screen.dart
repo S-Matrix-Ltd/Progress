@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
 import '../models/user_profile.dart';
+import '../models/theme_option.dart';
 import '../services/storage_service.dart';
 import '../services/settings_service.dart';
 import '../services/auth_service.dart';
+import '../services/i18n.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
 import '../services/pdf_service.dart';
@@ -33,6 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
   UserProfile? _profile;
   AppSettings _appSettings = AppSettings();
 
+  void _onGlobalSettingsChanged() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _handleLogout() async {
     await _auth.logout();
     if (!mounted) return;
@@ -43,12 +50,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openSettings() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    final result = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
     // Settings e rate/profile change hote pare, tai fire ei firey eshe reload.
     if (!mounted) return;
     await _loadProfile();
-    await _loadMonth();
     await _loadAppSettings();
+    if (result != null && result['year'] != null && result['month'] != null) {
+      setState(() {
+        year = result['year'] as int;
+        month = result['month'] as int;
+      });
+    }
+    await _loadMonth();
   }
 
   int year = DateTime.now().year;
@@ -69,6 +85,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadMonth();
     _loadProfile();
     _loadAppSettings();
+    // Language/Theme onno kono screen theke change hole (ba je kono
+    // karone shathe shathe rebuild na hole) — ei listener fail-safe
+    // hishebe Home screen force rebuild kore.
+    themeNotifier.addListener(_onGlobalSettingsChanged);
+    languageNotifier.addListener(_onGlobalSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    themeNotifier.removeListener(_onGlobalSettingsChanged);
+    languageNotifier.removeListener(_onGlobalSettingsChanged);
+    super.dispose();
   }
 
   Future<void> _loadAppSettings() async {
@@ -212,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Reset Month?'),
-        content: Text('${kMonthNames[month - 1]} $year - shob entry muche jabe. Confirm?'),
+        content: Text('${trMonthNames[month - 1]} $year - shob entry muche jabe. Confirm?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Reset', style: TextStyle(color: Color(0xFFB91C1C)))),
@@ -230,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEEF2F6),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(14),
@@ -291,17 +319,17 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('COLOR INDICATOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF475569))),
+          Text(tr('color_indicator'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF475569))),
           const SizedBox(height: 10),
           Wrap(
             spacing: 14,
             runSpacing: 8,
             children: [
-              _legendChip(kNight, 'Night Duty'),
-              _legendChip(kDuty, 'Regular Duty'),
-              _legendChip(kDayoff, 'Day Off'),
-              _legendChip(kAmberCombo, 'Night + Duty'),
-              _legendChip(kWeekendBg, 'Weekend (Thu/Fri)'),
+              _legendChip(kNight, tr('night_duty')),
+              _legendChip(kDuty, tr('regular_duty')),
+              _legendChip(kDayoff, tr('day_off')),
+              _legendChip(kAmberCombo, tr('night_plus_duty')),
+              _legendChip(kWeekendBg, tr('weekend')),
             ],
           ),
         ],
@@ -334,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _showMsg('Link open kora gelo na.');
             }
           },
-          child: const Text('Check for Updates', style: TextStyle(fontSize: 11.5)),
+          child: Text(tr('check_updates'), style: const TextStyle(fontSize: 11.5)),
         ),
         const SizedBox(height: 2),
         Text(kDeveloperCredit, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
@@ -348,17 +376,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final id = _profile?.employeeId ?? '';
     final company = _profile?.company ?? '';
     final address = _profile?.address ?? '';
+    final opt = themeOptionFor(themeNotifier.value);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2E2A82), Color(0xFF3730A3), Color(0xFF0369A1)],
+          colors: opt.headerGradient,
         ),
-        boxShadow: [BoxShadow(color: const Color(0xFF3730A3).withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: opt.primary.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,22 +395,22 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Monthly Duty & Payout Summary',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, height: 1.25)),
-                    SizedBox(height: 4),
-                    Text('Track Duty, OT & Estimated Earnings',
-                        style: TextStyle(color: Color(0xFFA5F3FC), fontSize: 11.5, fontWeight: FontWeight.w600)),
+                    Text(tr('header_title'),
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, height: 1.25)),
+                    const SizedBox(height: 4),
+                    Text(tr('header_subtitle'),
+                        style: const TextStyle(color: Color(0xFFA5F3FC), fontSize: 11.5, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
               IconButton(
                 onPressed: _openSettings,
                 icon: const Icon(Icons.settings, color: Colors.white70, size: 22),
-                tooltip: 'Settings',
+                tooltip: tr('settings'),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -389,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 onPressed: _handleLogout,
                 icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
-                tooltip: 'Logout',
+                tooltip: tr('logout'),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -451,22 +480,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _monthPicker() {
+    final opt = themeOptionFor(themeNotifier.value);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0369A1).withOpacity(0.06),
+        color: opt.primary.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: const Color(0xFF0369A1), width: 4)),
+        border: Border(left: BorderSide(color: opt.primary, width: 4)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.calendar_month, size: 18, color: Color(0xFF0369A1)),
+          Icon(Icons.calendar_month, size: 18, color: opt.primary),
           const SizedBox(width: 10),
-          const Expanded(child: Text('MONTH / YEAR', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+          Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
           DropdownButton<int>(
             value: month,
             underline: const SizedBox(),
-            items: List.generate(12, (i) => DropdownMenuItem(value: i + 1, child: Text(kMonthNames[i]))),
+            items: List.generate(12, (i) => DropdownMenuItem(value: i + 1, child: Text(trMonthNames[i]))),
             onChanged: (v) {
               if (v == null) return;
               setState(() => month = v);
@@ -496,17 +526,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _rateSettingsCard() {
+    final opt = themeOptionFor(themeNotifier.value);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: const Color(0xFF3730A3), width: 4)),
+        border: Border(left: BorderSide(color: opt.primary, width: 4)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
-        title: const Text('RATE SETTINGS', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF3730A3))),
+        title: Text(tr('rate_settings'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: opt.primary)),
         children: [
           GridView.count(
             crossAxisCount: 2,
@@ -516,10 +547,10 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 8,
             childAspectRatio: 2.4,
             children: [
-              _rateField('OT Rate / hr', rateOTCtrl),
-              _rateField('Night Duty Rate', rateNightCtrl),
-              _rateField('Off Duty Rate', rateOFFCtrl),
-              _rateField('Gross / Fixed', rateGrossCtrl),
+              _rateField(tr('ot_rate'), rateOTCtrl),
+              _rateField(tr('night_rate'), rateNightCtrl),
+              _rateField(tr('off_rate'), rateOFFCtrl),
+              _rateField(tr('gross_rate'), rateGrossCtrl),
             ],
           ),
         ],
@@ -552,12 +583,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _dayTableCard() {
+    final opt = themeOptionFor(themeNotifier.value);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: const Color(0xFF3730A3), width: 4)),
+        border: Border(left: BorderSide(color: opt.primary, width: 4)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
       child: Column(
@@ -566,16 +598,16 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF3730A3), Color(0xFF6D28D9)]),
+              gradient: LinearGradient(colors: [opt.headerGradient[1], opt.headerGradient.last]),
               borderRadius: BorderRadius.circular(9),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Expanded(flex: 4, child: Text('DATE', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.left)),
-                Expanded(flex: 2, child: Text('OT', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('N', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('D', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('OFF', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 4, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.left)),
+                Expanded(flex: 2, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
               ],
             ),
           ),
@@ -607,10 +639,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _summaryGrid() {
     return Row(
       children: [
-        _sumChip('${_trimZero(totOT)}', 'OT HOURS', const Color(0xFF047857)),
-        _sumChip('$totNight', 'NIGHT', const Color(0xFF7C3AED)),
-        _sumChip('$totDuty', 'DUTY', const Color(0xFF0369A1)),
-        _sumChip('$totDayOff', 'DAY OFF', const Color(0xFFB91C1C)),
+        _sumChip('${_trimZero(totOT)}', tr('ot_hours'), const Color(0xFF047857)),
+        _sumChip('$totNight', tr('night'), const Color(0xFF7C3AED)),
+        _sumChip('$totDuty', tr('duty'), const Color(0xFF0369A1)),
+        _sumChip('$totDayOff', tr('day_off'), const Color(0xFFB91C1C)),
       ],
     );
   }
@@ -639,15 +671,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _totalDisplay() {
+    final opt = themeOptionFor(themeNotifier.value);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF312E81)]),
+        gradient: LinearGradient(colors: [const Color(0xFF0F172A), const Color(0xFF1E293B), opt.primary.withOpacity(0.9)]),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
-          const Text('TOTAL AMOUNT', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          Text(tr('total_amount'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
           const SizedBox(height: 4),
           Text(
             '${_appSettings.currencySymbol} ${totalAmount.toStringAsFixed(2)}',
@@ -659,14 +692,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _actionButtons() {
+    final opt = themeOptionFor(themeNotifier.value);
     return Row(
       children: [
         Expanded(
           child: ElevatedButton.icon(
             onPressed: _handleExportPdf,
             icon: const Icon(Icons.picture_as_pdf, size: 18),
-            label: const Text('Export PDF'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3730A3), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+            label: Text(tr('export_pdf')),
+            style: ElevatedButton.styleFrom(backgroundColor: opt.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
           ),
         ),
         const SizedBox(width: 8),
@@ -674,7 +708,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ElevatedButton.icon(
             onPressed: _handleReset,
             icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Reset'),
+            label: Text(tr('reset')),
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFEF2F2), foregroundColor: const Color(0xFFB91C1C), padding: const EdgeInsets.symmetric(vertical: 14)),
           ),
         ),
