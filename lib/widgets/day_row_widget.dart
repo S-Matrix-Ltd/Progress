@@ -9,6 +9,11 @@ const Color kWeekendBg = Color(0xFF52B788);
 const Color kZebra = Color(0xFFF4F7FB);
 const Color kAmberCombo = Color(0xFFD97706);
 
+/// Row background color.
+/// IMPORTANT: A status mark (night/duty/dayoff) always takes priority
+/// over the weekend green — age eta weekend-er khetre dayoff mark
+/// korleo green e chapa pore jeto, mark kora dekha jeto na. Ekhon
+/// mark korle shob shomoy color change hobe, weekend hok ba na hok.
 Color rowBackgroundColor(DayEntry entry, bool isWeekend, bool isEven) {
   final s = entry.statuses;
   if (s.isEmpty) {
@@ -20,7 +25,7 @@ Color rowBackgroundColor(DayEntry entry, bool isWeekend, bool isEven) {
   final hasDayoff = s.contains('dayoff');
 
   if (hasNight && hasDuty) return kAmberCombo.withOpacity(0.55);
-  if (hasDayoff) return isWeekend ? kWeekendBg : kDayoff.withOpacity(0.42);
+  if (hasDayoff) return kDayoff.withOpacity(0.42);
   if (hasNight) return kNight.withOpacity(0.5);
   if (hasDuty) return kDuty.withOpacity(0.5);
   return isWeekend ? kWeekendBg : (isEven ? kZebra : Colors.transparent);
@@ -50,6 +55,10 @@ class DayRowWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = rowBackgroundColor(entry, isWeekend, isEven);
     final isMarked = entry.statuses.isNotEmpty;
+    // Marked ba weekend row-e background colored thake, tokhon pill-er
+    // background halka shada kore contrast rakha hoyeche.
+    final onColoredBg = isMarked || isWeekend;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
@@ -61,41 +70,52 @@ class DayRowWidget extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            flex: 4,
+            flex: 5,
             child: Row(
               children: [
                 Flexible(
                   child: Text(
                     dateLabel,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isMarked ? const Color(0xFF0F172A) : const Color(0xFF0F172A),
+                      color: Color(0xFF0F172A),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 4),
-                Text(weekdayLabel,
-                    style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.w600)),
+                const SizedBox(width: 6),
+                // Weekday ke ekta chhoto pill-e alada kore deya hoyeche,
+                // jate date theke sohoje alada bujha jay.
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: onColoredBg ? Colors.white.withOpacity(0.55) : const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    weekdayLabel,
+                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF334155), fontWeight: FontWeight.w800),
+                  ),
+                ),
               ],
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 1,
             child: SizedBox(
-              height: 34,
+              height: 32,
               child: TextFormField(
                 initialValue: entry.ot == 0 ? '' : _fmtNum(entry.ot),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF6D28D9)),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF6D28D9)),
                 decoration: InputDecoration(
                   isDense: true,
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(7)),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
                 ),
                 onChanged: (v) => onOtChanged(double.tryParse(v) ?? 0),
               ),

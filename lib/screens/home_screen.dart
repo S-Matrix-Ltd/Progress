@@ -526,8 +526,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                Expanded(flex: 4, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.left)),
-                Expanded(flex: 2, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 5, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.left)),
+                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
                 Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
                 Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
                 Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
