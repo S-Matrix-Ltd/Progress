@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:local_auth/local_auth.dart';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -174,23 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Password prompt — Reset o Unmark-er moto sensitive kaj-e use hoy.
-  /// Age fingerprint/biometric try kore, fail/unavailable hole password-e
-  /// fallback kore.
   Future<bool> _promptPassword(String title) async {
-    try {
-      final localAuth = LocalAuthentication();
-      final supported = await localAuth.isDeviceSupported();
-      final canCheck = await localAuth.canCheckBiometrics;
-      if (supported && canCheck) {
-        final didAuth = await localAuth.authenticate(
-          localizedReason: tr('biometric_reason'),
-          options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
-        );
-        if (didAuth) return true;
-      }
-    } catch (_) {
-      // Biometric na thakle/error hole niche password dialog-e fallback hobe.
-    }
     if (!mounted) return false;
     final ctrl = TextEditingController();
     final proceed = await showDialog<bool>(

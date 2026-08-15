@@ -18,24 +18,6 @@ jobs:
       - name: Update Kotlin version
         run: sed -i -E "/org.jetbrains.kotlin.android/ s/version [\"'][^\"']*[\"']/version '1.9.24'/" android/settings.gradle
 
-      - name: Bump compileSdk/targetSdk to 35 (local_auth requirement) + force clean SDK reinstall
-        run: |
-          sed -i -E 's/(compileSdk(Version)?)[[:space:]]+.*/\1 35/' android/app/build.gradle
-          sed -i -E 's/(targetSdk(Version)?)[[:space:]]+.*/\1 35/' android/app/build.gradle
-          sed -i -E '/compileSdk(Version)? 35/a\    buildToolsVersion "35.0.0"' android/app/build.gradle
-          # GitHub-hosted runner-er preinstalled android-35 platform maje-maje
-          # corrupted thake (aapt2 "RES_TABLE_TYPE_TYPE entry offsets overlap"
-          # error dey) — tai age uninstall kore fresh kore reinstall kora
-          # hocche, jate corrupted cache use na hoy.
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -f "$SDKMANAGER" ]; then
-            SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -n1)
-          fi
-          echo "Using sdkmanager: $SDKMANAGER"
-          rm -rf "$ANDROID_HOME/platforms/android-35" "$ANDROID_HOME/build-tools/35.0.0"
-          yes | "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" --channel=0
-          echo "Reinstalled platform + build-tools 35."
-
       - name: Set app display name to "Progress"
         run: |
           sed -i 's/android:label="[^"]*"/android:label="Progress"/' android/app/src/main/AndroidManifest.xml
@@ -44,24 +26,9 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
-      - name: Add notification + biometric permissions to manifest
+      - name: Add notification permission to manifest
         run: |
-          sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>\n    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>#' android/app/src/main/AndroidManifest.xml
-
-      - name: Switch MainActivity to FlutterFragmentActivity (local_auth requirement)
-        run: |
-          MAIN_ACTIVITY=$(find android/app/src/main -name "MainActivity.kt")
-          sed -i 's/FlutterActivity/FlutterFragmentActivity/g' "$MAIN_ACTIVITY"
-          echo "Patched: $MAIN_ACTIVITY"
-          cat "$MAIN_ACTIVITY"
-
-      - name: Switch app theme to Theme.AppCompat (local_auth requirement)
-        run: |
-          for f in android/app/src/main/res/values/styles.xml android/app/src/main/res/values-night/styles.xml; do
-            if [ -f "$f" ]; then
-              sed -i 's#@android:style/Theme.Light.NoTitleBar#@style/Theme.AppCompat.Light.NoActionBar#g; s#@android:style/Theme.Black.NoTitleBar#@style/Theme.AppCompat.NoActionBar#g' "$f"
-            fi
-          done
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>#' android/app/src/main/AndroidManifest.xml
 
       - name: Decode release keystore
         run: |

@@ -37,7 +37,6 @@ const Map<String, Map<String, String>> _kStrings = {
     'en': 'Notification permission denied — please allow it from phone Settings > Apps > Progress > Notifications.',
     'bn': 'নোটিফিকেশন পারমিশন দেওয়া হয়নি — ফোনের Settings > Apps > Progress > Notifications থেকে Allow করুন।'
   },
-  'biometric_reason': {'en': 'Verify to continue', 'bn': 'চালিয়ে যেতে যাচাই করুন'},
   'settings': {'en': 'Settings', 'bn': 'সেটিংস'},
   'logout': {'en': 'Logout', 'bn': 'লগআউট'},
   'save_all': {'en': 'Save All Changes', 'bn': 'সব পরিবর্তন সেভ করুন'},
