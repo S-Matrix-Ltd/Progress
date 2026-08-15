@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Global language state — Settings theke change korle shathe shathe
 /// shob screen reflect hoy (main.dart-er MaterialApp ei value listen kore).
-final ValueNotifier<String> languageNotifier = ValueNotifier('bn');
+final ValueNotifier<String> languageNotifier = ValueNotifier('en');
 
 const Map<String, Map<String, String>> _kStrings = {
   'header_title': {'en': 'Monthly Duty & Payout Summary', 'bn': 'মাসিক ডিউটি ও পেআউট সামারি'},

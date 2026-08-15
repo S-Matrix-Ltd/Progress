@@ -26,6 +26,62 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
+      - name: Decode release keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/progress-release.keystore
+
+      - name: Write key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=progress-release.keystore
+          EOF
+
+      - name: Wire release signing into build.gradle (permanent-fix for install conflicts)
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          path = "android/app/build.gradle"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          # 1) Top-e key.properties load korার code inject koro (file-er
+          #    shuru-tei, plugins block-er age).
+          loader = (
+              'def keystorePropertiesFile = rootProject.file("key.properties")\n'
+              'def keystoreProperties = new Properties()\n'
+              'if (keystorePropertiesFile.exists()) {\n'
+              '    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n'
+              '}\n\n'
+          )
+          if 'keystorePropertiesFile' not in content:
+              content = loader + content
+
+          # 2) 'android {' block-er thik pore signingConfigs{} inject koro.
+          signing_block = (
+              '\n    signingConfigs {\n'
+              '        release {\n'
+              '            keyAlias keystoreProperties["keyAlias"]\n'
+              '            keyPassword keystoreProperties["keyPassword"]\n'
+              '            storeFile keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null\n'
+              '            storePassword keystoreProperties["storePassword"]\n'
+              '        }\n'
+              '    }\n'
+          )
+          if 'signingConfigs {' not in content:
+              content = re.sub(r'(android\s*\{)', r'\1' + signing_block, content, count=1)
+
+          # 3) buildTypes.release-er signingConfig-ke debug theke release-e switch koro
+          #    (AGP version bhede '=' shoho/chara duitai handle kora hocche).
+          content = re.sub(r'signingConfig\s*=?\s*signingConfigs\.debug', 'signingConfig signingConfigs.release', content)
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(content)
+          print("build.gradle patched for release signing.")
+          PYEOF
+
       - run: flutter pub get
 
       - name: Build APK (version-embedded)

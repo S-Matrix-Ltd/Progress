@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openSettings() async {
     final result = await Navigator.push<Map<String, dynamic>?>(
       context,
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      slideInRoute(const SettingsScreen()),
     );
     // Settings e rate/profile change hote pare, tai fire ei firey eshe reload.
     if (!mounted) return;
@@ -312,29 +312,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _colorLegend() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(tr('color_indicator'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF475569))),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 14,
-            runSpacing: 8,
-            children: [
-              _legendChip(kNight, tr('night_duty')),
-              _legendChip(kDuty, tr('regular_duty')),
-              _legendChip(kDayoff, tr('day_off')),
-              _legendChip(kAmberCombo, tr('night_plus_duty')),
-              _legendChip(kWeekendBg, tr('weekend')),
-            ],
-          ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _legendChip(kNight, tr('night_duty')),
+            const SizedBox(width: 12),
+            _legendChip(kDuty, tr('regular_duty')),
+            const SizedBox(width: 12),
+            _legendChip(kDayoff, tr('day_off')),
+            const SizedBox(width: 12),
+            _legendChip(kAmberCombo, tr('night_plus_duty')),
+            const SizedBox(width: 12),
+            _legendChip(kWeekendBg, tr('weekend')),
+          ],
+        ),
       ),
     );
   }
@@ -343,9 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 14, height: 14, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        Container(width: 11, height: 11, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+        const SizedBox(width: 5),
+        Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
       ],
     );
   }
@@ -531,21 +529,18 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           const SizedBox(width: 8),
-          SizedBox(
-            width: 70,
-            child: TextFormField(
-              initialValue: year.toString(),
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8)),
-              onFieldSubmitted: (v) {
-                final y = int.tryParse(v);
-                if (y != null) {
-                  setState(() => year = y);
-                  _loadMonth();
-                }
-              },
-            ),
+          DropdownButton<int>(
+            value: year,
+            underline: const SizedBox(),
+            items: List.generate(11, (i) {
+              final y = DateTime.now().year - 5 + i;
+              return DropdownMenuItem(value: y, child: Text('$y'));
+            }),
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() => year = v);
+              _loadMonth();
+            },
           ),
         ],
       ),
@@ -573,12 +568,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                Expanded(flex: 3, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
-                Expanded(flex: 2, child: Text(tr('col_day'), style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
+                Expanded(flex: 1, child: Text(tr('col_day'), style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
               ],
             ),
           ),

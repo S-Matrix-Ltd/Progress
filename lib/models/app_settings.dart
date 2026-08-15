@@ -10,7 +10,7 @@ class AppSettings {
 
   AppSettings({
     this.theme = 'purple',
-    this.language = 'bn',
+    this.language = 'en',
     this.currency = 'BDT',
     this.reminderEnabled = false,
     this.reminderHour = 21,
@@ -44,7 +44,7 @@ class AppSettings {
     }
     return AppSettings(
       theme: rawTheme,
-      language: json['language'] as String? ?? 'bn',
+      language: json['language'] as String? ?? 'en',
       currency: json['currency'] as String? ?? 'BDT',
       reminderEnabled: json['reminderEnabled'] as bool? ?? false,
       reminderHour: (json['reminderHour'] as num?)?.toInt() ?? 21,

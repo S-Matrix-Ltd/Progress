@@ -67,19 +67,19 @@ class DayRowWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // DATE — nijer column, ekhon r weekday-r sathe merged na tai
-          // extra jayga khay na, alada column-e clean thake.
+          // DATE — flex kombe deya hoyeche jate date-r por extra khali
+          // jayga na thake.
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Text(
               dateLabel,
-              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: textColor),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           // DAY — separate column, chhoto pill hisebe.
           Expanded(
-            flex: 2,
+            flex: 1,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
@@ -95,14 +95,14 @@ class DayRowWidget extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 1,
             child: SizedBox(
               height: 32,
               child: TextFormField(
                 initialValue: entry.ot == 0 ? '' : _fmtNum(entry.ot),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF6D28D9)),
+                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF6D28D9)),
                 decoration: InputDecoration(
                   isDense: true,
                   filled: true,

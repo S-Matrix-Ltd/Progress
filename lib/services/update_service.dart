@@ -18,7 +18,13 @@ class UpdateService {
     try {
       final res = await http.get(
         Uri.parse(kReleasesApiUrl),
-        headers: {'Accept': 'application/vnd.github+json'},
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          // GitHub API User-Agent chara request-e 403 Forbidden dey —
+          // eijonnoi age "internet problem" mistakenly dekhaতো, asol
+          // internet thik-i chilo.
+          'User-Agent': 'ProgressApp-SMatrixLtd',
+        },
       ).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
