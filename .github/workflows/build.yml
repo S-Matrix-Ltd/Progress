@@ -26,9 +26,42 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
-      - name: Add notification + biometric permissions to manifest
+      # IMPORTANT: the old version of this step did a sed find/replace that
+      # looked for an EXISTING <uses-permission INTERNET> line and inserted
+      # the new permissions right after it. But `flutter create` does NOT
+      # put an INTERNET permission in the RELEASE manifest at all (it only
+      # exists in the debug-only manifest, which is not part of a release
+      # build) — so that find/replace silently matched nothing and NONE of
+      # these permissions were ever added to the real APK. This is why the
+      # release build had no internet access (update-check "network error")
+      # and no notification permission (alarm/reminder silently failing).
+      # Fixed by inserting permissions right after the <manifest ...> open
+      # tag directly, which always exists.
+      - name: Add internet, notification, biometric, boot permissions to manifest
         run: |
-          sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>\n    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>#' android/app/src/main/AndroidManifest.xml
+          python3 - <<'PYEOF'
+          import re
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          perms = (
+              '    <uses-permission android:name="android.permission.INTERNET"/>\n'
+              '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n'
+              '    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>\n'
+              '    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>\n'
+              '    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n'
+          )
+          # Insert right after the opening <manifest ...> tag, regardless of
+          # whatever permissions (if any) already exist in the file.
+          content, n = re.subn(r'(<manifest[^>]*>)', r'\1\n' + perms, content, count=1)
+          if n == 0:
+              raise SystemExit("Could not find <manifest> tag to patch — aborting build.")
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(content)
+          print("AndroidManifest.xml patched with required permissions.")
+          PYEOF
 
       - name: Switch MainActivity to FlutterFragmentActivity (local_auth requirement)
         run: |

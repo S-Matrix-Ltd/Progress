@@ -439,6 +439,54 @@ class _AppearancePanelState extends State<AppearancePanel> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
+  // Language/Currency-o Month/Year-er moto shomoy-i showModalBottomSheet
+  // diye niche theke khole — plain DropdownButtonFormField ekhane use na
+  // korar karon holo eta screen-er nicher dik-e thakle nijer hishebmoto
+  // upor-dikeo khulte pare, ja user-er jonne অপ্রত্যাশিত lage. Bottom
+  // sheet shobshomoy screen-er NICHE theke-i ashe, tai eta permanent fix.
+  Widget _sheetPickerField({required String label, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(border: Border.all(color: const Color(0xFF94A3B8)), borderRadius: BorderRadius.circular(4)),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
+            const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF64748B)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFromSheet({
+    required String current,
+    required Map<String, String> options,
+    required ValueChanged<String> onPicked,
+  }) async {
+    final keys = options.keys.toList();
+    final primary = Theme.of(context).colorScheme.primary;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: keys.length,
+          itemBuilder: (ctx, i) => ListTile(
+            title: Text(options[keys[i]]!),
+            trailing: (keys[i] == current) ? Icon(Icons.check, color: primary) : null,
+            onTap: () => Navigator.pop(ctx, keys[i]),
+          ),
+        ),
+      ),
+    );
+    if (picked != null) onPicked(picked);
+  }
+
   Future<void> _save() async {
     final verified = await verifyWithPasswordPrompt(context, _auth);
     if (!verified) return;
@@ -461,32 +509,30 @@ class _AppearancePanelState extends State<AppearancePanel> {
         children: [
           Text(tr('language'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
           const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            value: _settings.language,
-            decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
-            items: const [
-              DropdownMenuItem(value: 'en', child: Text('English')),
-              DropdownMenuItem(value: 'bn', child: Text('বাংলা')), // native name, intentionally not translated
-            ],
-            onChanged: (v) {
-              setState(() => _settings.language = v ?? 'bn');
-              _markDirty();
-            },
+          _sheetPickerField(
+            label: _settings.language == 'en' ? 'English' : 'বাংলা',
+            onTap: () => _pickFromSheet(
+              current: _settings.language,
+              options: const {'en': 'English', 'bn': 'বাংলা'},
+              onPicked: (v) {
+                setState(() => _settings.language = v);
+                _markDirty();
+              },
+            ),
           ),
           const SizedBox(height: 16),
           Text(tr('currency'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
           const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            value: (_settings.currency == 'BDT' || _settings.currency == 'USD') ? _settings.currency : 'BDT',
-            decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
-            items: const [
-              DropdownMenuItem(value: 'BDT', child: Text('BDT (৳)')),
-              DropdownMenuItem(value: 'USD', child: Text('USD (\$) — live rate')),
-            ],
-            onChanged: (v) {
-              setState(() => _settings.currency = v ?? 'BDT');
-              _markDirty();
-            },
+          _sheetPickerField(
+            label: (_settings.currency == 'USD') ? 'USD (\$) — live rate' : 'BDT (৳)',
+            onTap: () => _pickFromSheet(
+              current: (_settings.currency == 'BDT' || _settings.currency == 'USD') ? _settings.currency : 'BDT',
+              options: const {'BDT': 'BDT (৳)', 'USD': 'USD (\$) — live rate'},
+              onPicked: (v) {
+                setState(() => _settings.currency = v);
+                _markDirty();
+              },
+            ),
           ),
           const SizedBox(height: 16),
           Text(tr('theme'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
