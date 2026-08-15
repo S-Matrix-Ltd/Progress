@@ -455,6 +455,21 @@ class _AppearancePanelState extends State<AppearancePanel> {
             },
           ),
           const SizedBox(height: 16),
+          Text(tr('currency'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            value: (_settings.currency == 'BDT' || _settings.currency == 'USD') ? _settings.currency : 'BDT',
+            decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+            items: const [
+              DropdownMenuItem(value: 'BDT', child: Text('BDT (৳)')),
+              DropdownMenuItem(value: 'USD', child: Text('USD (\$) — live rate')),
+            ],
+            onChanged: (v) {
+              setState(() => _settings.currency = v ?? 'BDT');
+              _markDirty();
+            },
+          ),
+          const SizedBox(height: 16),
           Text(tr('theme'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
           const SizedBox(height: 10),
           Wrap(

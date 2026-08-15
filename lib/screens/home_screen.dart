@@ -8,6 +8,8 @@ import '../services/storage_service.dart';
 import '../services/settings_service.dart';
 import '../services/auth_service.dart';
 import '../services/i18n.dart';
+import '../services/currency_service.dart';
+import '../services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
 import '../services/pdf_service.dart';
@@ -31,9 +33,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final _auth = AuthService();
   final _settingsService = SettingsService();
   final _pdfService = PdfService();
+  final _currencyService = CurrencyService();
+  final _updateService = UpdateService();
 
   UserProfile? _profile;
   AppSettings _appSettings = AppSettings();
+  double _usdRate = 0;
 
   void _onGlobalSettingsChanged() {
     if (mounted) setState(() {});
@@ -93,6 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = await _settingsService.load();
     if (!mounted) return;
     setState(() => _appSettings = s);
+    if (s.currency == 'USD') _loadUsdRate();
+  }
+
+  Future<void> _loadUsdRate() async {
+    final rate = await _currencyService.getBdtToUsdRate();
+    if (!mounted) return;
+    setState(() => _usdRate = rate);
   }
 
   Future<void> _loadProfile() async {
@@ -281,6 +293,8 @@ class _HomeScreenState extends State<HomeScreen> {
       rateOFF: double.tryParse(rateOFFCtrl.text) ?? 0,
       rateGross: double.tryParse(rateGrossCtrl.text) ?? 0,
     );
+    final isUsd = _appSettings.currency == 'USD';
+    final pdfAmount = isUsd ? totalAmount * _usdRate : totalAmount;
     await _pdfService.exportMonth(
       profile: _profile,
       year: year,
@@ -291,8 +305,8 @@ class _HomeScreenState extends State<HomeScreen> {
       totNight: totNight,
       totDuty: totDuty,
       totDayOff: totDayOff,
-      totalAmount: totalAmount,
-      currencySymbol: _appSettings.currencySymbol,
+      totalAmount: pdfAmount,
+      currencyCode: _appSettings.currency,
     );
   }
 
@@ -342,21 +356,54 @@ class _HomeScreenState extends State<HomeScreen> {
         Text('Progress App • v$kAppVersion', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
         const SizedBox(height: 4),
         TextButton(
-          onPressed: () async {
-            final uri = Uri.parse(kReleasesUrl);
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } else if (mounted) {
-              _showMsg('Link open kora gelo na.');
-            }
-          },
+          onPressed: _handleCheckUpdate,
           child: Text(tr('check_updates'), style: const TextStyle(fontSize: 11.5)),
         ),
         const SizedBox(height: 2),
         Text(kDeveloperCredit, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+        Text(kCopyrightNotice, style: const TextStyle(fontSize: 9.5, color: Color(0xFFB0B8C4))),
         const SizedBox(height: 10),
       ],
     );
+  }
+
+  Future<void> _handleCheckUpdate() async {
+    _showMsg(tr('checking_updates'));
+    final result = await _updateService.checkForUpdate(kAppVersion);
+    if (!mounted) return;
+
+    if (!result.success) {
+      _showMsg(tr('update_check_failed'));
+      return;
+    }
+    if (!result.hasUpdate) {
+      _showMsg(tr('no_update_available'));
+      return;
+    }
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('update_available_title')),
+        content: Text('${tr('update_available_body')} v${result.latestVersion}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('later'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('update_now'))),
+        ],
+      ),
+    );
+    if (proceed != true) return;
+
+    final uri = Uri.parse(kReleasesUrl);
+    // canLaunchUrl() maje-maje custom ROM/Android 11+ package-visibility
+    // restriction-er karone bhul kore 'false' dey, tai direct launchUrl
+    // try kore dekha hocche, fail korle tobei error dekhano hobe.
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _showMsg(tr('link_open_failed'));
+    } catch (_) {
+      if (mounted) _showMsg(tr('link_open_failed'));
+    }
   }
 
   Widget _header() {
@@ -526,11 +573,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                Expanded(flex: 5, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.left)),
-                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 3, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
+                Expanded(flex: 2, child: Text(tr('col_day'), style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
               ],
             ),
           ),
@@ -595,6 +643,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _totalDisplay() {
     final opt = themeOptionFor(themeNotifier.value);
+    final isUsd = _appSettings.currency == 'USD';
+    final displayAmount = isUsd ? totalAmount * _usdRate : totalAmount;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
@@ -606,9 +656,14 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(tr('total_amount'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
           const SizedBox(height: 4),
           Text(
-            '${_appSettings.currencySymbol} ${totalAmount.toStringAsFixed(2)}',
+            '${_appSettings.currency} ${displayAmount.toStringAsFixed(2)}',
             style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 28, fontWeight: FontWeight.w900),
           ),
+          if (isUsd && _usdRate == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(tr('rate_loading'), style: const TextStyle(color: Color(0xFF64748B), fontSize: 9.5)),
+            ),
         ],
       ),
     );

@@ -10,16 +10,15 @@ const Color kZebra = Color(0xFFF4F7FB);
 const Color kAmberCombo = Color(0xFFD97706);
 
 /// Row background color.
-/// IMPORTANT: A status mark (night/duty/dayoff) always takes priority
-/// over the weekend green — age eta weekend-er khetre dayoff mark
-/// korleo green e chapa pore jeto, mark kora dekha jeto na. Ekhon
-/// mark korle shob shomoy color change hobe, weekend hok ba na hok.
+/// Weekend (Thu/Fri) row-er color ekhon FIXED thake — kono status mark
+/// (Night/Duty/Off) korleo weekend green color change hobe na. Shudhu
+/// non-weekend din-e status mark korle color change hoy.
 Color rowBackgroundColor(DayEntry entry, bool isWeekend, bool isEven) {
+  if (isWeekend) return kWeekendBg;
+
   final s = entry.statuses;
-  if (s.isEmpty) {
-    if (isWeekend) return kWeekendBg;
-    return isEven ? kZebra : Colors.transparent;
-  }
+  if (s.isEmpty) return isEven ? kZebra : Colors.transparent;
+
   final hasNight = s.contains('night');
   final hasDuty = s.contains('duty');
   final hasDayoff = s.contains('dayoff');
@@ -28,7 +27,7 @@ Color rowBackgroundColor(DayEntry entry, bool isWeekend, bool isEven) {
   if (hasDayoff) return kDayoff.withOpacity(0.42);
   if (hasNight) return kNight.withOpacity(0.5);
   if (hasDuty) return kDuty.withOpacity(0.5);
-  return isWeekend ? kWeekendBg : (isEven ? kZebra : Colors.transparent);
+  return isEven ? kZebra : Colors.transparent;
 }
 
 class DayRowWidget extends StatelessWidget {
@@ -55,9 +54,8 @@ class DayRowWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = rowBackgroundColor(entry, isWeekend, isEven);
     final isMarked = entry.statuses.isNotEmpty;
-    // Marked ba weekend row-e background colored thake, tokhon pill-er
-    // background halka shada kore contrast rakha hoyeche.
     final onColoredBg = isMarked || isWeekend;
+    final textColor = onColoredBg ? const Color(0xFF0F172A) : const Color(0xFF0F172A);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
@@ -69,40 +67,35 @@ class DayRowWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // DATE — nijer column, ekhon r weekday-r sathe merged na tai
+          // extra jayga khay na, alada column-e clean thake.
           Expanded(
-            flex: 5,
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    dateLabel,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+            flex: 3,
+            child: Text(
+              dateLabel,
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: textColor),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // DAY — separate column, chhoto pill hisebe.
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: onColoredBg ? Colors.white.withOpacity(0.55) : const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                const SizedBox(width: 6),
-                // Weekday ke ekta chhoto pill-e alada kore deya hoyeche,
-                // jate date theke sohoje alada bujha jay.
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: onColoredBg ? Colors.white.withOpacity(0.55) : const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    weekdayLabel,
-                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF334155), fontWeight: FontWeight.w800),
-                  ),
+                child: Text(
+                  weekdayLabel,
+                  style: const TextStyle(fontSize: 9.5, color: Color(0xFF334155), fontWeight: FontWeight.w800),
                 ),
-              ],
+              ),
             ),
           ),
           Expanded(
-            flex: 1,
+            flex: 2,
             child: SizedBox(
               height: 32,
               child: TextFormField(
