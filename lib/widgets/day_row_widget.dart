@@ -67,35 +67,35 @@ class DayRowWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // DATE — flex kombe deya hoyeche jate date-r por extra khali
-          // jayga na thake.
+          // DATE + DAY — ekই column-e, gap chhoto rakha hoyeche jate
+          // majhkhane boro khali jayga na thake.
+          Expanded(
+            flex: 4,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  dateLabel,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: onColoredBg ? Colors.white.withOpacity(0.55) : const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    weekdayLabel,
+                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF334155), fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             flex: 2,
-            child: Text(
-              dateLabel,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: textColor),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // DAY — separate column, chhoto pill hisebe.
-          Expanded(
-            flex: 1,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: onColoredBg ? Colors.white.withOpacity(0.55) : const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  weekdayLabel,
-                  style: const TextStyle(fontSize: 9.5, color: Color(0xFF334155), fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
             child: SizedBox(
               height: 32,
               child: TextFormField(

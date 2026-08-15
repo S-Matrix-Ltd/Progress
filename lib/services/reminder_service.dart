@@ -23,11 +23,19 @@ class ReminderService {
     _initialized = true;
   }
 
-  static Future<void> requestPermission() async {
+  /// Notification permission (Android 13+) request kore, ki hoyeche
+  /// (granted/denied) bool hisebe return kore — jate UI-te feedback
+  /// dekhano jay. Exact alarm permission IGNORE kora hocche karon
+  /// scheduleDaily() 'inexactAllowWhileIdle' mode use kore, tai eta
+  /// lagbei na — age eta chaite giye kichu device-e confusion/fail
+  /// hocchilo.
+  static Future<bool> requestPermission() async {
+    await init();
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    await androidImpl?.requestNotificationsPermission();
-    await androidImpl?.requestExactAlarmsPermission();
+    if (androidImpl == null) return true; // Android chara onno platform-e assume ok
+    final granted = await androidImpl.requestNotificationsPermission();
+    return granted ?? false;
   }
 
   static Future<void> scheduleDaily(TimeOfDay time) async {

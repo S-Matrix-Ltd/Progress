@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -31,7 +32,25 @@ Route<T> slideInRoute<T>(Widget page) {
 /// Save chapar age password verify kore. Shob edit-panel-e ei ekই
 /// dialog use hoy — profile/rate/appearance/reminder, sob khetre
 /// "view korar shomoy na, SAVE korar shomoy" password chay.
+/// Age fingerprint/biometric try kora hoy (device-e thakle) — success
+/// hole password ar lagbe na. Fingerprint na thakle/fail korle
+/// shorasori password dialog-e fallback kore.
 Future<bool> verifyWithPasswordPrompt(BuildContext context, AuthService auth) async {
+  try {
+    final localAuth = LocalAuthentication();
+    final supported = await localAuth.isDeviceSupported();
+    final canCheck = await localAuth.canCheckBiometrics;
+    if (supported && canCheck) {
+      final didAuth = await localAuth.authenticate(
+        localizedReason: tr('biometric_reason'),
+        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+      );
+      if (didAuth) return true;
+    }
+  } catch (_) {
+    // Biometric na thakle/error hole niche password dialog-e fallback hobe.
+  }
+  if (!context.mounted) return false;
   final ctrl = TextEditingController();
   final proceed = await showDialog<bool>(
     context: context,
@@ -635,7 +654,14 @@ class _ReminderPanelState extends State<ReminderPanel> {
     if (!verified) return;
     await _settingsService.save(_settings);
     if (_settings.reminderEnabled) {
-      await ReminderService.requestPermission();
+      final granted = await ReminderService.requestPermission();
+      if (!granted) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('notification_permission_denied')), backgroundColor: const Color(0xFFB91C1C)),
+        );
+        return;
+      }
       await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
     } else {
       await ReminderService.cancel();

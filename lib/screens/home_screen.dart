@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -173,7 +174,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Password prompt — Reset o Unmark-er moto sensitive kaj-e use hoy.
+  /// Age fingerprint/biometric try kore, fail/unavailable hole password-e
+  /// fallback kore.
   Future<bool> _promptPassword(String title) async {
+    try {
+      final localAuth = LocalAuthentication();
+      final supported = await localAuth.isDeviceSupported();
+      final canCheck = await localAuth.canCheckBiometrics;
+      if (supported && canCheck) {
+        final didAuth = await localAuth.authenticate(
+          localizedReason: tr('biometric_reason'),
+          options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+        );
+        if (didAuth) return true;
+      }
+    } catch (_) {
+      // Biometric na thakle/error hole niche password dialog-e fallback hobe.
+    }
+    if (!mounted) return false;
     final ctrl = TextEditingController();
     final proceed = await showDialog<bool>(
       context: context,
@@ -351,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _footer() {
     return Column(
       children: [
-        Text('Progress App • v$kAppVersion', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+        Text('${tr('version_label')} $kAppVersion', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
         const SizedBox(height: 4),
         TextButton(
           onPressed: _handleCheckUpdate,
@@ -518,33 +536,80 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(Icons.calendar_month, size: 18, color: opt.primary),
           const SizedBox(width: 10),
           Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
-          DropdownButton<int>(
-            value: month,
-            underline: const SizedBox(),
-            items: List.generate(12, (i) => DropdownMenuItem(value: i + 1, child: Text(trMonthNames[i]))),
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() => month = v);
-              _loadMonth();
-            },
-          ),
+          _pickerChip(trMonthNames[month - 1], () => _showMonthSheet(opt.primary)),
           const SizedBox(width: 8),
-          DropdownButton<int>(
-            value: year,
-            underline: const SizedBox(),
-            items: List.generate(11, (i) {
-              final y = DateTime.now().year - 5 + i;
-              return DropdownMenuItem(value: y, child: Text('$y'));
-            }),
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() => year = v);
-              _loadMonth();
-            },
-          ),
+          _pickerChip('$year', () => _showYearSheet(opt.primary)),
         ],
       ),
     );
+  }
+
+  Widget _pickerChip(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // showModalBottomSheet shobshomoy screen-er NICHE theke ashe — DropdownButton-er
+  // ulta-dike (upore) khule jawar problem eta diye permanently fix hoyeche.
+  Future<void> _showMonthSheet(Color primary) async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: 12,
+          itemBuilder: (ctx, i) => ListTile(
+            title: Text(trMonthNames[i]),
+            trailing: (i + 1 == month) ? Icon(Icons.check, color: primary) : null,
+            onTap: () => Navigator.pop(ctx, i + 1),
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+    setState(() => month = picked);
+    _loadMonth();
+  }
+
+  Future<void> _showYearSheet(Color primary) async {
+    final years = List.generate(11, (i) => DateTime.now().year - 5 + i);
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => SafeArea(
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: years.length,
+          itemBuilder: (ctx, i) => ListTile(
+            title: Text('${years[i]}'),
+            trailing: (years[i] == year) ? Icon(Icons.check, color: primary) : null,
+            onTap: () => Navigator.pop(ctx, years[i]),
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+    setState(() => year = picked);
+    _loadMonth();
   }
 
   Widget _dayTableCard() {
@@ -568,12 +633,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                Expanded(flex: 2, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
-                Expanded(flex: 1, child: Text(tr('col_day'), style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 4, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
+                Expanded(flex: 2, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
               ],
             ),
           ),
@@ -652,7 +716,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 4),
           Text(
             '${_appSettings.currency} ${displayAmount.toStringAsFixed(2)}',
-            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 28, fontWeight: FontWeight.w900),
+            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 21, fontWeight: FontWeight.w900),
           ),
           if (isUsd && _usdRate == 0)
             Padding(

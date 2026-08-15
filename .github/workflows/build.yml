@@ -26,6 +26,25 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
+      - name: Add notification + biometric permissions to manifest
+        run: |
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>\n    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>#' android/app/src/main/AndroidManifest.xml
+
+      - name: Switch MainActivity to FlutterFragmentActivity (local_auth requirement)
+        run: |
+          MAIN_ACTIVITY=$(find android/app/src/main -name "MainActivity.kt")
+          sed -i 's/FlutterActivity/FlutterFragmentActivity/g' "$MAIN_ACTIVITY"
+          echo "Patched: $MAIN_ACTIVITY"
+          cat "$MAIN_ACTIVITY"
+
+      - name: Switch app theme to Theme.AppCompat (local_auth requirement)
+        run: |
+          for f in android/app/src/main/res/values/styles.xml android/app/src/main/res/values-night/styles.xml; do
+            if [ -f "$f" ]; then
+              sed -i 's#@android:style/Theme.Light.NoTitleBar#@style/Theme.AppCompat.Light.NoActionBar#g; s#@android:style/Theme.Black.NoTitleBar#@style/Theme.AppCompat.NoActionBar#g' "$f"
+            fi
+          done
+
       - name: Decode release keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/progress-release.keystore
