@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/i18n.dart';
 
 const Color kForgotPrimary = Color(0xFF3730A3);
 
@@ -24,7 +25,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_newPassCtrl.text != _confirmCtrl.text) {
-      _showMsg('Notun Password mile ni');
+      _showMsg(tr('new_password_not_match'));
       return;
     }
     setState(() => _loading = true);
@@ -40,8 +41,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password change hoye geche. Notun Password diye Login korun.'),
-          backgroundColor: Color(0xFF15803D)),
+      SnackBar(content: Text(tr('password_reset_success')),
+          backgroundColor: const Color(0xFF15803D)),
     );
     Navigator.of(context).pop();
   }
@@ -57,7 +58,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Forgot Password'),
+        title: Text(tr('forgot_password_title')),
         backgroundColor: kForgotPrimary,
         foregroundColor: Colors.white,
       ),
@@ -79,41 +80,41 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Identity Verify Korun',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kForgotPrimary)),
+                      Text(tr('verify_identity'),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kForgotPrimary)),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Registration-er shomoy je Username o Employee ID diyechilen shei ta likhe notun Password set korun.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      Text(
+                        tr('verify_identity_desc'),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                       const SizedBox(height: 18),
                       TextFormField(
                         controller: _usernameCtrl,
                         decoration: InputDecoration(
-                          labelText: 'Username',
+                          labelText: tr('username'),
                           prefixIcon: const Icon(Icons.person_outline, size: 20),
                           isDense: true,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Username lagbe' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? '${tr('username')} ${tr('field_required')}' : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _idCtrl,
                         decoration: InputDecoration(
-                          labelText: 'Employee ID',
+                          labelText: tr('employee_id'),
                           prefixIcon: const Icon(Icons.badge_outlined, size: 20),
                           isDense: true,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Employee ID lagbe' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? '${tr('employee_id')} ${tr('field_required')}' : null,
                       ),
                       const Divider(height: 32),
                       TextFormField(
                         controller: _newPassCtrl,
                         obscureText: _obscure,
                         decoration: InputDecoration(
-                          labelText: 'New Password',
+                          labelText: tr('new_password'),
                           prefixIcon: const Icon(Icons.lock_outline, size: 20),
                           suffixIcon: IconButton(
                             icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, size: 20),
@@ -122,19 +123,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           isDense: true,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'New Password lagbe' : null,
+                        validator: (v) => (v == null || v.isEmpty) ? '${tr('new_password')} ${tr('field_required')}' : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _confirmCtrl,
                         obscureText: _obscure,
                         decoration: InputDecoration(
-                          labelText: 'Confirm New Password',
+                          labelText: tr('confirm_new_password'),
                           prefixIcon: const Icon(Icons.lock_outline, size: 20),
                           isDense: true,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Confirm korun' : null,
+                        validator: (v) => (v == null || v.isEmpty) ? '${tr('confirm_new_password')} ${tr('field_required')}' : null,
                       ),
                       const SizedBox(height: 20),
                       _loading
@@ -147,7 +148,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 padding: const EdgeInsets.symmetric(vertical: 15),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
-                              child: const Text('Reset Password', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                              child: Text(tr('reset_password'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                             ),
                     ],
                   ),

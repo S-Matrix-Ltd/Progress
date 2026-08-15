@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/i18n.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -20,7 +21,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Future<void> _submit() async {
     setState(() => _error = null);
     if (_newCtrl.text != _confirmCtrl.text) {
-      setState(() => _error = 'Notun Password mile ni');
+      setState(() => _error = tr('new_password_not_match'));
       return;
     }
     setState(() => _busy = true);
@@ -32,7 +33,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password change hoyeche'), backgroundColor: Color(0xFF047857)),
+      SnackBar(content: Text(tr('password_changed_msg')), backgroundColor: const Color(0xFF047857)),
     );
     Navigator.pop(context);
   }
@@ -40,31 +41,31 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Change Password')),
+      appBar: AppBar(title: Text(tr('change_password'))),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
           TextFormField(
             controller: _oldCtrl,
             obscureText: _obscure,
-            decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: tr('current_password'), border: const OutlineInputBorder()),
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _newCtrl,
             obscureText: _obscure,
-            decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: tr('new_password'), border: const OutlineInputBorder()),
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _confirmCtrl,
             obscureText: _obscure,
-            decoration: const InputDecoration(labelText: 'Confirm New Password', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: tr('confirm_new_password'), border: const OutlineInputBorder()),
           ),
           Row(
             children: [
               Checkbox(value: !_obscure, onChanged: (v) => setState(() => _obscure = !(v ?? false))),
-              const Text('Password dekhan'),
+              Text(tr('show_password')),
             ],
           ),
           if (_error != null)
@@ -85,7 +86,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               child: _busy
                   ? const SizedBox(
                       height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Update Password'),
+                  : Text(tr('update_password')),
             ),
           ),
         ],

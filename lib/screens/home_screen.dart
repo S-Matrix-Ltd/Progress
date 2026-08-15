@@ -171,11 +171,11 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: ctrl,
           obscureText: true,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+          decoration: InputDecoration(labelText: tr('password'), border: const OutlineInputBorder()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
         ],
       ),
     );
@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final ok = await _auth.verifyPassword(ctrl.text);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Password bhul'), backgroundColor: Color(0xFFB91C1C)));
+          .showSnackBar(SnackBar(content: Text(tr('wrong_password')), backgroundColor: const Color(0xFFB91C1C)));
     }
     return ok;
   }
@@ -195,13 +195,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (statuses.contains(type)) {
       // Unmark korte password lagbe — bhul kore click hoye gele
       // accidentally data muche jabe na.
-      final verified = await _promptPassword('Unmark korte Password din');
+      final verified = await _promptPassword(tr('unmark_password_title'));
       if (!verified) return;
       statuses.remove(type);
     } else {
       if (type == 'dayoff') {
         if (statuses.contains('night') || statuses.contains('duty')) {
-          _showMsg('আগে Night/Duty unmark korun, tarpor Day Off marking sombhob.');
+          _showMsg(tr('unmark_dayoff_first'));
           return;
         }
         statuses
@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ..add('dayoff');
       } else {
         if (statuses.contains('dayoff')) {
-          _showMsg('Day Off active thakle Night/Duty mark kora jabe na.');
+          _showMsg(tr('dayoff_blocks_others'));
           return;
         }
         statuses.add(type);
@@ -224,16 +224,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _handleReset() async {
-    final verified = await _promptPassword('Reset korte Password din');
+    final verified = await _promptPassword(tr('reset_month_password_title'));
     if (!verified) return;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reset Month?'),
-        content: Text('${trMonthNames[month - 1]} $year - shob entry muche jabe. Confirm?'),
+        title: Text(tr('reset_month_title')),
+        content: Text('${trMonthNames[month - 1]} $year ${tr('reset_month_confirm')}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Reset', style: TextStyle(color: Color(0xFFB91C1C)))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('reset'), style: const TextStyle(color: Color(0xFFB91C1C)))),
         ],
       ),
     );

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/day_entry.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
-import 'home_screen.dart' show kMonthNames;
+import '../services/i18n.dart';
 
 class DataHistoryScreen extends StatefulWidget {
   const DataHistoryScreen({super.key});
@@ -36,25 +36,25 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Confirm'),
+        title: Text(tr('delete_confirm_title')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${kMonthNames[m.month - 1]} ${m.year} - entry ta muche jabe. Password din:'),
+            Text('${trMonthNames[m.month - 1]} ${m.year} ${tr('delete_confirm_body')}'),
             const SizedBox(height: 10),
             TextField(
               controller: pwCtrl,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: tr('password'), border: const OutlineInputBorder()),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFB91C1C))),
+            child: Text(tr('delete'), style: const TextStyle(color: Color(0xFFB91C1C))),
           ),
         ],
       ),
@@ -64,7 +64,7 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Password bhul'), backgroundColor: Color(0xFFB91C1C)));
+          .showSnackBar(SnackBar(content: Text(tr('wrong_password')), backgroundColor: const Color(0xFFB91C1C)));
       return;
     }
     await _storage.deleteMonth(m.year, m.month);
@@ -76,11 +76,11 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Data History')),
+      appBar: AppBar(title: Text(tr('data_history'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _months.isEmpty
-              ? const Center(child: Text('Kono saved data nei'))
+              ? Center(child: Text(tr('no_saved_data')))
               : ListView.separated(
                   padding: const EdgeInsets.all(14),
                   itemCount: _months.length,
@@ -100,7 +100,7 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('${kMonthNames[m.month - 1]} ${m.year}',
+                                Text('${trMonthNames[m.month - 1]} ${m.year}',
                                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                                 const SizedBox(height: 4),
                                 Text(
@@ -108,7 +108,7 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
                                   style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
                                 ),
                                 const SizedBox(height: 4),
-                                Text('Total: ${m.total.toStringAsFixed(2)}',
+                                Text('${tr('total_label')}: ${m.total.toStringAsFixed(2)}',
                                     style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0369A1))),
                               ],
                             ),

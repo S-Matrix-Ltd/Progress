@@ -36,16 +36,16 @@ Future<bool> verifyWithPasswordPrompt(BuildContext context, AuthService auth) as
   final proceed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Save korte Password din'),
+      title: Text(tr('save_password_title')),
       content: TextField(
         controller: ctrl,
         obscureText: true,
         autofocus: true,
-        decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+        decoration: InputDecoration(labelText: tr('password'), border: const OutlineInputBorder()),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
       ],
     ),
   );
@@ -53,7 +53,7 @@ Future<bool> verifyWithPasswordPrompt(BuildContext context, AuthService auth) as
   final ok = await auth.verifyPassword(ctrl.text);
   if (!ok && context.mounted) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Password bhul'), backgroundColor: Color(0xFFB91C1C)));
+        .showSnackBar(SnackBar(content: Text(tr('wrong_password')), backgroundColor: const Color(0xFFB91C1C)));
   }
   return ok;
 }
@@ -97,11 +97,11 @@ class PanelScaffold extends StatelessWidget {
     final leave = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Unsaved Changes'),
-        content: const Text('Apnar changes save hoyni. Save na kore jaben?'),
+        title: Text(tr('unsaved_changes_title')),
+        content: Text(tr('unsaved_changes_body')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Thakun')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Chole Jai')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('stay'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('leave'))),
         ],
       ),
     );
@@ -171,11 +171,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Logout?'),
-        content: const Text('Apni ki logout korte chan?'),
+        title: Text(tr('logout_confirm_title')),
+        content: Text(tr('logout_confirm_body')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: Color(0xFFB91C1C)))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('logout'), style: const TextStyle(color: Color(0xFFB91C1C)))),
         ],
       ),
     );
@@ -216,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _sectionTitle(tr('previous_month_history'), primary),
           _card(
             _months.isEmpty
-                ? [const Text('Kono saved data nei.', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)))]
+                ? [Text(tr('no_saved_data'), style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)))]
                 : [
                     ..._months.take(6).map((m) {
                       final label = '${trMonthNames[m.month - 1].toUpperCase()} ${m.year}';
@@ -447,7 +447,7 @@ class _AppearancePanelState extends State<AppearancePanel> {
             decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
             items: const [
               DropdownMenuItem(value: 'en', child: Text('English')),
-              DropdownMenuItem(value: 'bn', child: Text('বাংলা')),
+              DropdownMenuItem(value: 'bn', child: Text('বাংলা')), // native name, intentionally not translated
             ],
             onChanged: (v) {
               setState(() => _settings.language = v ?? 'bn');

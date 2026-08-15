@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/i18n.dart';
 import 'home_screen.dart';
 
 const Color kPrimaryColor = Color(0xFF3730A3);
@@ -28,7 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_passwordCtrl.text != _confirmCtrl.text) {
-      _showMsg('Password mile ni');
+      _showMsg(tr('passwords_not_match'));
       return;
     }
     setState(() => _loading = true);
@@ -85,22 +86,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text('Registration',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kPrimaryColor)),
+                          Text(tr('registration'),
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kPrimaryColor)),
                           const SizedBox(height: 16),
-                          _field(_nameCtrl, 'Full Name', Icons.person_outline, required: true),
+                          _field(_nameCtrl, tr('full_name'), Icons.person_outline, required: true),
                           const SizedBox(height: 12),
-                          _field(_idCtrl, 'Employee ID', Icons.badge_outlined),
+                          _field(_idCtrl, tr('employee_id'), Icons.badge_outlined),
                           const SizedBox(height: 12),
-                          _field(_companyCtrl, 'Company Name', Icons.apartment_outlined),
+                          _field(_companyCtrl, tr('company_name'), Icons.apartment_outlined),
                           const SizedBox(height: 12),
-                          _field(_addressCtrl, 'Address', Icons.location_on_outlined, maxLines: 2),
+                          _field(_addressCtrl, tr('address'), Icons.location_on_outlined, maxLines: 2),
                           const Divider(height: 32),
-                          _field(_usernameCtrl, 'Username', Icons.alternate_email, required: true),
+                          _field(_usernameCtrl, tr('username'), Icons.alternate_email, required: true),
                           const SizedBox(height: 12),
-                          _passwordField(_passwordCtrl, 'Password'),
+                          _passwordField(_passwordCtrl, tr('password')),
                           const SizedBox(height: 12),
-                          _passwordField(_confirmCtrl, 'Confirm Password'),
+                          _passwordField(_confirmCtrl, tr('confirm_password')),
                           const SizedBox(height: 20),
                           _loading
                               ? const Center(child: CircularProgressIndicator())
@@ -112,12 +113,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     padding: const EdgeInsets.symmetric(vertical: 15),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
-                                  child: const Text('Register', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                                  child: Text(tr('register'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                                 ),
                           const SizedBox(height: 14),
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Already have an account? Login'),
+                            child: Text(tr('already_have_account')),
                           ),
                         ],
                       ),
@@ -162,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      validator: required ? (v) => (v == null || v.trim().isEmpty) ? '$label lagbe' : null : null,
+      validator: required ? (v) => (v == null || v.trim().isEmpty) ? '$label ${tr('field_required')}' : null : null,
     );
   }
 
@@ -180,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
-      validator: (v) => (v == null || v.isEmpty) ? '$label lagbe' : null,
+      validator: (v) => (v == null || v.isEmpty) ? '$label ${tr('field_required')}' : null,
     );
   }
 }

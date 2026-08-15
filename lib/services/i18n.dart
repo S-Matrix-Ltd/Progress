@@ -55,6 +55,72 @@ const Map<String, Map<String, String>> _kStrings = {
   'change_password_desc': {'en': 'Update account password', 'bn': 'অ্যাকাউন্ট পাসওয়ার্ড আপডেট করুন'},
   'logout_desc': {'en': 'Sign out of your account', 'bn': 'অ্যাকাউন্ট থেকে সাইন আউট করুন'},
   'back': {'en': 'Back', 'bn': 'পেছনে'},
+
+  // --- Phase 6: dialogs/validators/auth screens (fix banglish leak) ---
+  'cancel': {'en': 'Cancel', 'bn': 'বাতিল'},
+  'confirm': {'en': 'Confirm', 'bn': 'নিশ্চিত করুন'},
+  'password': {'en': 'Password', 'bn': 'পাসওয়ার্ড'},
+  'username': {'en': 'Username', 'bn': 'ইউজারনেম'},
+  'wrong_password': {'en': 'Wrong password', 'bn': 'পাসওয়ার্ড ভুল'},
+  'field_required': {'en': 'is required', 'bn': ' লাগবে'},
+  'unmark_password_title': {'en': 'Enter password to unmark', 'bn': 'আনমার্ক করতে পাসওয়ার্ড দিন'},
+  'save_password_title': {'en': 'Enter password to save', 'bn': 'সেভ করতে পাসওয়ার্ড দিন'},
+  'reset_month_password_title': {'en': 'Enter password to reset', 'bn': 'রিসেট করতে পাসওয়ার্ড দিন'},
+  'unmark_dayoff_first': {
+    'en': 'Please unmark Night/Duty first, then Day Off can be marked.',
+    'bn': 'আগে নাইট/ডিউটি আনমার্ক করুন, তারপর ডে অফ মার্ক করা সম্ভব।'
+  },
+  'dayoff_blocks_others': {
+    'en': 'Night/Duty cannot be marked while Day Off is active.',
+    'bn': 'ডে অফ চালু থাকলে নাইট/ডিউটি মার্ক করা যাবে না।'
+  },
+  'reset_month_title': {'en': 'Reset Month?', 'bn': 'মাস রিসেট করবেন?'},
+  'reset_month_confirm': {'en': 'entries will be cleared. Confirm?', 'bn': '- সব এন্ট্রি মুছে যাবে। নিশ্চিত করবেন?'},
+  'unsaved_changes_title': {'en': 'Unsaved Changes', 'bn': 'অসংরক্ষিত পরিবর্তন'},
+  'unsaved_changes_body': {
+    'en': 'Your changes are not saved. Leave without saving?',
+    'bn': 'আপনার পরিবর্তন সেভ হয়নি। সেভ না করে চলে যাবেন?'
+  },
+  'stay': {'en': 'Stay', 'bn': 'থাকুন'},
+  'leave': {'en': 'Leave', 'bn': 'চলে যান'},
+  'logout_confirm_title': {'en': 'Logout?', 'bn': 'লগআউট করবেন?'},
+  'logout_confirm_body': {'en': 'Are you sure you want to logout?', 'bn': 'আপনি কি লগআউট করতে চান?'},
+  'no_saved_data': {'en': 'No saved data.', 'bn': 'কোনো সংরক্ষিত তথ্য নেই।'},
+  'login': {'en': 'Login', 'bn': 'লগইন'},
+  'remember_me': {'en': 'Remember Me', 'bn': 'মনে রাখুন'},
+  'forgot_password_q': {'en': 'Forgot Password?', 'bn': 'পাসওয়ার্ড ভুলে গেছেন?'},
+  'new_user_register': {'en': 'New user? Register', 'bn': 'নতুন ইউজার? রেজিস্টার করুন'},
+  'registration': {'en': 'Registration', 'bn': 'রেজিস্ট্রেশন'},
+  'register': {'en': 'Register', 'bn': 'রেজিস্টার'},
+  'already_have_account': {'en': 'Already have an account? Login', 'bn': 'অ্যাকাউন্ট আছে? লগইন করুন'},
+  'passwords_not_match': {'en': 'Passwords do not match', 'bn': 'পাসওয়ার্ড মিলছে না'},
+  'full_name': {'en': 'Full Name', 'bn': 'পূর্ণ নাম'},
+  'employee_id': {'en': 'Employee ID', 'bn': 'এমপ্লয়ি আইডি'},
+  'company_name': {'en': 'Company Name', 'bn': 'কোম্পানির নাম'},
+  'address': {'en': 'Address', 'bn': 'ঠিকানা'},
+  'confirm_password': {'en': 'Confirm Password', 'bn': 'পাসওয়ার্ড নিশ্চিত করুন'},
+  'new_password': {'en': 'New Password', 'bn': 'নতুন পাসওয়ার্ড'},
+  'confirm_new_password': {'en': 'Confirm New Password', 'bn': 'নতুন পাসওয়ার্ড নিশ্চিত করুন'},
+  'current_password': {'en': 'Current Password', 'bn': 'বর্তমান পাসওয়ার্ড'},
+  'show_password': {'en': 'Show Password', 'bn': 'পাসওয়ার্ড দেখান'},
+  'update_password': {'en': 'Update Password', 'bn': 'পাসওয়ার্ড আপডেট করুন'},
+  'password_changed_msg': {'en': 'Password changed successfully', 'bn': 'পাসওয়ার্ড পরিবর্তন হয়েছে'},
+  'forgot_password_title': {'en': 'Forgot Password', 'bn': 'পাসওয়ার্ড ভুলে গেছেন'},
+  'verify_identity': {'en': 'Verify Identity', 'bn': 'পরিচয় যাচাই করুন'},
+  'verify_identity_desc': {
+    'en': 'Enter the Username and Employee ID you used during registration to set a new password.',
+    'bn': 'রেজিস্ট্রেশনের সময় যে Username ও Employee ID দিয়েছিলেন তা লিখে নতুন পাসওয়ার্ড সেট করুন।'
+  },
+  'reset_password': {'en': 'Reset Password', 'bn': 'পাসওয়ার্ড রিসেট'},
+  'password_reset_success': {
+    'en': 'Password has been reset. Please login with your new password.',
+    'bn': 'পাসওয়ার্ড পরিবর্তন হয়ে গেছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।'
+  },
+  'new_password_not_match': {'en': 'New passwords do not match', 'bn': 'নতুন পাসওয়ার্ড মিলছে না'},
+  'delete_confirm_title': {'en': 'Delete Confirm', 'bn': 'মুছে ফেলা নিশ্চিত করুন'},
+  'delete_confirm_body': {'en': 'entry will be deleted. Enter password:', 'bn': '- এন্ট্রি মুছে যাবে। পাসওয়ার্ড দিন:'},
+  'delete': {'en': 'Delete', 'bn': 'মুছুন'},
+  'total_label': {'en': 'Total', 'bn': 'সর্বমোট'},
 };
 
 String tr(String key) {

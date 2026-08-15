@@ -22,6 +22,10 @@ jobs:
         run: |
           sed -i 's/android:label="[^"]*"/android:label="Progress"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Add browser <queries> for url_launcher (Android 11+ package visibility)
+        run: |
+          sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+
       - run: flutter pub get
 
       - run: flutter build apk --release
