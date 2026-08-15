@@ -38,32 +38,32 @@ class PdfService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               _header(profile, year, month),
-              pw.SizedBox(height: 12),
+              pw.SizedBox(height: 8),
               pw.Divider(thickness: 1, color: PdfColors.grey400),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 6),
               _table(days, year, month, totOT, totNight, totDuty, totDayOff),
-              pw.SizedBox(height: 14),
+              pw.SizedBox(height: 8),
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+                padding: const pw.EdgeInsets.symmetric(vertical: 9, horizontal: 14),
                 decoration: pw.BoxDecoration(color: PdfColors.indigo900, borderRadius: pw.BorderRadius.circular(6)),
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
                     pw.Text('TOTAL AMOUNT (GROSS)',
-                        style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 12)),
+                        style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11)),
                     pw.Text('$currencyCode ${totalAmount.toStringAsFixed(2)}',
-                        style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 17)),
+                        style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 15)),
                   ],
                 ),
               ),
-              pw.SizedBox(height: 14),
+              pw.SizedBox(height: 8),
               pw.Divider(thickness: 0.6, color: PdfColors.grey300),
-              pw.SizedBox(height: 6),
+              pw.SizedBox(height: 4),
               pw.Center(
                 child: pw.Text('Developed by S Matrix Ltd.  •  \u00a9 2026 S Matrix Ltd. All rights reserved.',
-                    style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                    style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
               ),
             ],
           ),
@@ -109,8 +109,8 @@ class PdfService {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
       columnWidths: const {
-        0: pw.FlexColumnWidth(3),
-        1: pw.FlexColumnWidth(1.1),
+        0: pw.FlexColumnWidth(2.3),
+        1: pw.FlexColumnWidth(1),
         2: pw.FlexColumnWidth(1.5),
         3: pw.FlexColumnWidth(1.5),
         4: pw.FlexColumnWidth(1.5),
@@ -119,11 +119,11 @@ class PdfService {
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.indigo100),
           children: [
-            _cell('DATE', bold: true, fontSize: 9),
-            _cell('OT(H)', bold: true, center: true, fontSize: 9),
-            _cell('NIGHT DUTY', bold: true, center: true, fontSize: 9),
-            _cell('OFF DAY DUTY', bold: true, center: true, fontSize: 9),
-            _cell('OFF DAY', bold: true, center: true, fontSize: 9),
+            _cell('DATE', bold: true, fontSize: 8.5),
+            _cell('OT(H)', bold: true, center: true, fontSize: 8.5),
+            _cell('NIGHT DUTY', bold: true, center: true, fontSize: 8.5),
+            _cell('OFF DAY DUTY', bold: true, center: true, fontSize: 8.5),
+            _cell('OFF DAY', bold: true, center: true, fontSize: 8.5),
           ],
         ),
         ...List.generate(days.length, (i) {
@@ -134,11 +134,11 @@ class PdfService {
               '${d.toString().padLeft(2, '0')}.${month.toString().padLeft(2, '0')}.$year (${_kWeekdayShort[wd % 7]})';
           final e = days[i];
           return pw.TableRow(children: [
-            _cell(dateLabel, fontSize: 9),
-            _cell(_num(e.ot), center: true, fontSize: 9),
-            _cell(e.hasNight ? 'Y' : '', center: true, fontSize: 9),
-            _cell(e.hasDuty ? 'Y' : '', center: true, fontSize: 9),
-            _cell(e.hasDayoff ? 'Y' : '', center: true, fontSize: 9),
+            _cell(dateLabel, fontSize: 8.5),
+            _cell(_num(e.ot), center: true, fontSize: 8.5),
+            _cell(e.hasNight ? 'Y' : '', center: true, fontSize: 8.5),
+            _cell(e.hasDuty ? 'Y' : '', center: true, fontSize: 8.5),
+            _cell(e.hasDayoff ? 'Y' : '', center: true, fontSize: 8.5),
           ]);
         }),
         // Totals row — column-er sathe milie protyek column-er total
@@ -146,11 +146,11 @@ class PdfService {
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.indigo50),
           children: [
-            _cell('TOTAL', bold: true, fontSize: 9),
-            _cell(_num(totOT), bold: true, center: true, fontSize: 9),
-            _cell('$totNight', bold: true, center: true, fontSize: 9),
-            _cell('$totDuty', bold: true, center: true, fontSize: 9),
-            _cell('$totDayOff', bold: true, center: true, fontSize: 9),
+            _cell('TOTAL', bold: true, fontSize: 8.5),
+            _cell(_num(totOT), bold: true, center: true, fontSize: 8.5),
+            _cell('$totNight', bold: true, center: true, fontSize: 8.5),
+            _cell('$totDuty', bold: true, center: true, fontSize: 8.5),
+            _cell('$totDayOff', bold: true, center: true, fontSize: 8.5),
           ],
         ),
       ],
@@ -159,8 +159,8 @@ class PdfService {
 
   String _num(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
 
-  pw.Widget _cell(String text, {bool bold = false, bool center = false, double fontSize = 9}) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 5),
+  pw.Widget _cell(String text, {bool bold = false, bool center = false, double fontSize = 8.5}) => pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 4),
         child: pw.Text(
           text,
           textAlign: center ? pw.TextAlign.center : pw.TextAlign.left,

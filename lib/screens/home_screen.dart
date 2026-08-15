@@ -233,7 +233,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: const Color(0xFFB91C1C)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: const Color(0xFFB91C1C),
+        duration: const Duration(seconds: 6),
+      ),
+    );
   }
 
   Future<void> _handleReset() async {
@@ -372,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     if (!result.success) {
-      _showMsg(tr('update_check_failed'));
+      _showMsg('${tr('update_check_failed')}${result.errorDetail.isNotEmpty ? ' [${result.errorDetail}]' : ''}');
       return;
     }
     if (!result.hasUpdate) {
