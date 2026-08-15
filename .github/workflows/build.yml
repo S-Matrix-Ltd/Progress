@@ -31,7 +31,15 @@ jobs:
           yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Update Kotlin version
+      # Kotlin bump-er por notun error ashlo: "Android Gradle Plugin version
+      # (7.3.0) is lower than the minimum supported 7.3.1" — mane eibar
+      # dhora porlo je eই project-er AGP version-o onek purono (7.3.0),
+      # Kotlin 2.1.0-er minimum requirement (7.3.1)-er thekeo ekটু kom!
+      # Tai ekhane AGP-ke 8.6.0-e bump kora hocche (compileSdk 35, Kotlin
+      # 2.1.0 — dutor shathei compatible), ar shathe gradle-wrapper-er
+      # Gradle version-o 8.7-e bump kora hocche, karon AGP 8.6 chalate
+      # Gradle 8.7+ lagbe — nahole eta ekটা notun mismatch error dibe.
+      - name: Update Kotlin + AGP + Gradle wrapper versions
         run: |
           echo "--- settings.gradle BEFORE ---"
           cat android/settings.gradle
@@ -46,19 +54,33 @@ jobs:
           # eki error bar bar ashচ্ছিল. Python-er regex diye ekhon shudhu
           # "org.jetbrains.kotlin.android" line-tar version-ke shorasori
           # target kore replace kora hocche, jate guaranteed kaj kore.
-          pattern = re.compile(
+          kotlin_pattern = re.compile(
               r'(id\s+["\']org\.jetbrains\.kotlin\.android["\']\s+version\s+)["\'][^"\']*["\']'
           )
-          new_content, n = pattern.subn(r"\1'2.1.0'", content)
-          if n == 0:
+          content, n1 = kotlin_pattern.subn(r"\1'2.1.0'", content)
+          if n1 == 0:
               raise SystemExit("Could not find org.jetbrains.kotlin.android plugin line to patch — aborting build.")
 
+          agp_pattern = re.compile(
+              r'(id\s+["\']com\.android\.application["\']\s+version\s+)["\'][^"\']*["\']'
+          )
+          content, n2 = agp_pattern.subn(r"\1'8.6.0'", content)
+          if n2 == 0:
+              raise SystemExit("Could not find com.android.application plugin line to patch — aborting build.")
+
           with open(path, "w", encoding="utf-8") as f:
-              f.write(new_content)
-          print(f"Patched {n} occurrence(s) of kotlin.android plugin version to 2.1.0")
+              f.write(content)
+          print(f"Patched kotlin.android -> 2.1.0 ({n1}), com.android.application -> 8.6.0 ({n2})")
           PYEOF
           echo "--- settings.gradle AFTER ---"
           cat android/settings.gradle
+
+          echo "--- gradle-wrapper.properties BEFORE ---"
+          cat android/gradle/wrapper/gradle-wrapper.properties
+          sed -i -E 's#distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          echo "--- gradle-wrapper.properties AFTER ---"
+          cat android/gradle/wrapper/gradle-wrapper.properties
+
 
       - name: Set app display name to "Progress"
         run: |
