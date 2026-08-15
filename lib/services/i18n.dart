@@ -130,6 +130,12 @@ const Map<String, Map<String, String>> _kStrings = {
   'link_open_failed': {'en': 'Could not open the link.', 'bn': 'লিংক খোলা গেল না।'},
   'checking_updates': {'en': 'Checking for updates...', 'bn': 'আপডেট চেক করা হচ্ছে...'},
   'update_check_failed': {'en': 'Could not check for updates. Check your internet.', 'bn': 'আপডেট চেক করা গেল না। ইন্টারনেট চেক করুন।'},
+  'update_check_failed_title': {'en': 'Could Not Check for Updates', 'bn': 'আপডেট চেক করা গেল না'},
+  'update_check_failed_body': {
+    'en': 'This can happen if your network blocks GitHub temporarily. You can still open the releases page directly to check manually.',
+    'bn': 'নেটওয়ার্ক সাময়িকভাবে GitHub ব্লক করলে এমন হতে পারে। চাইলে সরাসরি রিলিজ পেজ খুলে ম্যানুয়ালি চেক করতে পারেন।'
+  },
+  'open_releases_page': {'en': 'Open Releases Page', 'bn': 'রিলিজ পেজ খুলুন'},
   'no_update_available': {'en': 'You are using the latest version.', 'bn': 'আপনি সর্বশেষ ভার্সন ব্যবহার করছেন।'},
   'update_available_title': {'en': 'Update Available', 'bn': 'নতুন আপডেট এসেছে'},
   'update_available_body': {'en': 'A new version is available:', 'bn': 'নতুন ভার্সন এসেছে:'},

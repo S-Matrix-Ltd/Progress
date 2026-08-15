@@ -11,6 +11,7 @@ import '../services/i18n.dart';
 import 'change_password_screen.dart';
 import 'data_history_screen.dart';
 import 'login_screen.dart';
+import 'month_view_screen.dart';
 
 /// Right-side theke slide-in hoye ashe emon route — Settings-er
 /// protyekta section (Profile / Appearance / Rates / Reminder /
@@ -187,7 +188,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadMonth(MonthSummary m) async {
-    Navigator.of(context).pop({'year': m.year, 'month': m.month});
+    // Age eta Home-e pop kore direct edit-mode-e niye jeto — ekhon
+    // shudhu READ-ONLY view-e push kore, main interface touch hoy na.
+    await Navigator.push(context, slideInRoute(MonthViewScreen(year: m.year, month: m.month)));
   }
 
   @override
@@ -452,21 +455,6 @@ class _AppearancePanelState extends State<AppearancePanel> {
             ],
             onChanged: (v) {
               setState(() => _settings.language = v ?? 'bn');
-              _markDirty();
-            },
-          ),
-          const SizedBox(height: 16),
-          Text(tr('currency'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-          const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            value: (_settings.currency == 'BDT' || _settings.currency == 'USD') ? _settings.currency : 'BDT',
-            decoration: const InputDecoration(isDense: true, border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
-            items: const [
-              DropdownMenuItem(value: 'BDT', child: Text('BDT (৳)')),
-              DropdownMenuItem(value: 'USD', child: Text('USD (\$) — live rate')),
-            ],
-            onChanged: (v) {
-              setState(() => _settings.currency = v ?? 'BDT');
               _markDirty();
             },
           ),

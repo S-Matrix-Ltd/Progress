@@ -357,6 +357,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _currencyToggle() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _currencyPill('BDT'),
+          _currencyPill('USD'),
+        ],
+      ),
+    );
+  }
+
+  Widget _currencyPill(String code) {
+    final selected = _appSettings.currency == code;
+    return GestureDetector(
+      onTap: () => _switchCurrency(code),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(code, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: selected ? const Color(0xFF0F172A) : Colors.white70)),
+      ),
+    );
+  }
+
+  Future<void> _switchCurrency(String code) async {
+    if (_appSettings.currency == code) return;
+    setState(() => _appSettings.currency = code);
+    await _settingsService.save(_appSettings);
+    if (code == 'USD') _loadUsdRate();
+  }
+
   Widget _footer() {
     return Column(
       children: [
@@ -380,7 +421,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     if (!result.success) {
-      _showMsg('${tr('update_check_failed')}${result.errorDetail.isNotEmpty ? ' [${result.errorDetail}]' : ''}');
+      // Raw exception ar dekhano hocche na — user-friendly message,
+      // r chaile shorasori releases page open korার fallback option.
+      final openAnyway = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('update_check_failed_title')),
+          content: Text(tr('update_check_failed_body')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('open_releases_page'))),
+          ],
+        ),
+      );
+      if (openAnyway == true) await _openReleasesUrl();
       return;
     }
     if (!result.hasUpdate) {
@@ -400,7 +454,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (proceed != true) return;
+    await _openReleasesUrl();
+  }
 
+  Future<void> _openReleasesUrl() async {
     final uri = Uri.parse(kReleasesUrl);
     // canLaunchUrl() maje-maje custom ROM/Android 11+ package-visibility
     // restriction-er karone bhul kore 'false' dey, tai direct launchUrl
@@ -738,13 +795,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final isUsd = _appSettings.currency == 'USD';
     final displayAmount = isUsd ? totalAmount * _usdRate : totalAmount;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [const Color(0xFF0F172A), const Color(0xFF1E293B), opt.primary.withOpacity(0.9)]),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
+          // Currency (BDT/USD) toggle ekhon Total Amount box-er upor-right
+          // corner-e — Settings-e na giye shorasori ekhan theke switch kora jay.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [_currencyToggle()],
+          ),
+          const SizedBox(height: 4),
           Text(tr('total_amount'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
           const SizedBox(height: 4),
           Text(
