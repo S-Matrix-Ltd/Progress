@@ -32,7 +32,33 @@ jobs:
           "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Update Kotlin version
-        run: sed -i -E "/org.jetbrains.kotlin.android/ s/version [\"'][^\"']*[\"']/version '2.0.20'/" android/settings.gradle
+        run: |
+          echo "--- settings.gradle BEFORE ---"
+          cat android/settings.gradle
+          python3 - <<'PYEOF'
+          import re
+          path = "android/settings.gradle"
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+
+          # Age-r sed-based approach ('s/version ["\']...' pattern) file-e
+          # match kore nai bole silently kichu change hocchilo na, tai
+          # eki error bar bar ashচ্ছিল. Python-er regex diye ekhon shudhu
+          # "org.jetbrains.kotlin.android" line-tar version-ke shorasori
+          # target kore replace kora hocche, jate guaranteed kaj kore.
+          pattern = re.compile(
+              r'(id\s+["\']org\.jetbrains\.kotlin\.android["\']\s+version\s+)["\'][^"\']*["\']'
+          )
+          new_content, n = pattern.subn(r"\1'2.1.0'", content)
+          if n == 0:
+              raise SystemExit("Could not find org.jetbrains.kotlin.android plugin line to patch — aborting build.")
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(new_content)
+          print(f"Patched {n} occurrence(s) of kotlin.android plugin version to 2.1.0")
+          PYEOF
+          echo "--- settings.gradle AFTER ---"
+          cat android/settings.gradle
 
       - name: Set app display name to "Progress"
         run: |
