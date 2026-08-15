@@ -47,8 +47,13 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
               content = f.read()
 
-          # 1) Top-e key.properties load korার code inject koro (file-er
-          #    shuru-tei, plugins block-er age).
+          # key.properties load korার loader code + signingConfigs{} block
+          # — dutoi 'android {' block-er thik age/pore bosanor jonne ekshathe
+          # inject kora hocche. NOTE: file-er top-e (plugins{} block-er age)
+          # kono statement bosano jabe na — Gradle-er plugins{} DSL rule
+          # onujayi shudhu buildscript{}/pluginManagement{}/plugins{} blocks
+          # allowed thake tar age. Tai loader-ke 'android {' block-er thik
+          # age boshiye eita avoid kora hocche.
           loader = (
               'def keystorePropertiesFile = rootProject.file("key.properties")\n'
               'def keystoreProperties = new Properties()\n'
@@ -56,10 +61,6 @@ jobs:
               '    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n'
               '}\n\n'
           )
-          if 'keystorePropertiesFile' not in content:
-              content = loader + content
-
-          # 2) 'android {' block-er thik pore signingConfigs{} inject koro.
           signing_block = (
               '\n    signingConfigs {\n'
               '        release {\n'
@@ -70,11 +71,11 @@ jobs:
               '        }\n'
               '    }\n'
           )
-          if 'signingConfigs {' not in content:
-              content = re.sub(r'(android\s*\{)', r'\1' + signing_block, content, count=1)
+          if 'keystorePropertiesFile' not in content:
+              content = re.sub(r'(android\s*\{)', loader + r'\1' + signing_block, content, count=1)
 
-          # 3) buildTypes.release-er signingConfig-ke debug theke release-e switch koro
-          #    (AGP version bhede '=' shoho/chara duitai handle kora hocche).
+          # buildTypes.release-er signingConfig-ke debug theke release-e switch koro
+          # (AGP version bhede '=' shoho/chara duitai handle kora hocche).
           content = re.sub(r'signingConfig\s*=?\s*signingConfigs\.debug', 'signingConfig signingConfigs.release', content)
 
           with open(path, "w", encoding="utf-8") as f:
