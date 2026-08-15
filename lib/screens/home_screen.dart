@@ -616,11 +616,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                Expanded(flex: 4, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
-                Expanded(flex: 2, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 3, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
+                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
+                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
+                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
               ],
             ),
           ),

@@ -67,10 +67,10 @@ class DayRowWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // DATE + DAY — ekই column-e, gap chhoto rakha hoyeche jate
-          // majhkhane boro khali jayga na thake.
+          // DATE + DAY — flex kombe deya hoyeche jate content-er por
+          // extra khali jayga (majhkhane boro gap) na thake.
           Expanded(
-            flex: 4,
+            flex: 3,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -95,19 +95,19 @@ class DayRowWidget extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 1,
             child: SizedBox(
-              height: 32,
+              height: 30,
               child: TextFormField(
                 initialValue: entry.ot == 0 ? '' : _fmtNum(entry.ot),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF6D28D9)),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF6D28D9)),
                 decoration: InputDecoration(
                   isDense: true,
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
                 ),
                 onChanged: (v) => onOtChanged(double.tryParse(v) ?? 0),

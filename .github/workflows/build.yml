@@ -26,9 +26,16 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
-      - name: Add notification permission to manifest
+      - name: Add INTERNET + notification permissions to manifest
         run: |
-          sed -i 's#<uses-permission android:name="android.permission.INTERNET"/>#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>#' android/app/src/main/AndroidManifest.xml
+          # Flutter-er default generated RELEASE manifest-e INTERNET
+          # permission thake na (shudhu debug build-e auto add hoy) —
+          # tai age eta na thakle "Check for Updates" shoho shob http
+          # call silently fail kore "check your internet" dekhay, joto-i
+          # internet thak na kno. </manifest>-er age reliable-bhabe
+          # insert kora hocche (kono existing line-er upor depend kore na).
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          cat android/app/src/main/AndroidManifest.xml
 
       - name: Decode release keystore
         run: |
