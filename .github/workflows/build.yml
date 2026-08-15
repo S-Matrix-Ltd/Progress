@@ -15,8 +15,24 @@ jobs:
       - name: Generate Android platform files
         run: flutter create . --platforms=android --project-name progress
 
+      # 2 alada error dekhaচ্ছিল:
+      #  1) "failed to load include path .../platforms/android-35/android.jar"
+      #     — Flutter 3.24's own template now requires compileSdk/targetSdk 35,
+      #     kintu GitHub-er ubuntu-latest runner-e shudhu android-34 porjonto
+      #     pre-installed thake — android-35 platform explicitly sdkmanager
+      #     diye install korte hoy, nahole Gradle eta khuje na peye fail kore.
+      #  2) "project requires a newer version of the Kotlin Gradle plugin"
+      #     — compileSdk 35 + notun AGP-er shathe Kotlin 1.9.24 ar match kore
+      #     na, tai 2.0.20-e bump kora hocche (AGP 8.x + compileSdk 35-er
+      #     shathe compatible, widely-used stable version).
+      - name: Install Android SDK Platform 35 + Build Tools
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT}}"
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+
       - name: Update Kotlin version
-        run: sed -i -E "/org.jetbrains.kotlin.android/ s/version [\"'][^\"']*[\"']/version '1.9.24'/" android/settings.gradle
+        run: sed -i -E "/org.jetbrains.kotlin.android/ s/version [\"'][^\"']*[\"']/version '2.0.20'/" android/settings.gradle
 
       - name: Set app display name to "Progress"
         run: |
