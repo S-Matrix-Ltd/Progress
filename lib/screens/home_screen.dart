@@ -39,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
   UserProfile? _profile;
   AppSettings _appSettings = AppSettings();
   double _usdRate = 0;
+  bool _monthExpanded = false;
+  bool _yearExpanded = false;
 
   void _onGlobalSettingsChanged() {
     if (mounted) setState(() {});
@@ -520,20 +522,45 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border(left: BorderSide(color: opt.primary, width: 4)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.calendar_month, size: 18, color: opt.primary),
-          const SizedBox(width: 10),
-          Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
-          _pickerChip(trMonthNames[month - 1], () => _showMonthSheet(opt.primary)),
-          const SizedBox(width: 8),
-          _pickerChip('$year', () => _showYearSheet(opt.primary)),
+          Row(
+            children: [
+              Icon(Icons.calendar_month, size: 18, color: opt.primary),
+              const SizedBox(width: 10),
+              Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+              _pickerChip(trMonthNames[month - 1], _monthExpanded, () {
+                setState(() {
+                  _monthExpanded = !_monthExpanded;
+                  _yearExpanded = false;
+                });
+              }),
+              const SizedBox(width: 8),
+              _pickerChip('$year', _yearExpanded, () {
+                setState(() {
+                  _yearExpanded = !_yearExpanded;
+                  _monthExpanded = false;
+                });
+              }),
+            ],
+          ),
+          // Picker box-er thik nichei inline-e expand hoy (bottom-sheet
+          // popup na) — select korle abar compress hoye close hoye jay.
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _monthExpanded
+                ? _monthExpandGrid(opt.primary)
+                : (_yearExpanded ? _yearExpandGrid(opt.primary) : const SizedBox.shrink()),
+          ),
         ],
       ),
     );
   }
 
-  Widget _pickerChip(String label, VoidCallback onTap) {
+  Widget _pickerChip(String label, bool expanded, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -549,56 +576,73 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
             const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
+            AnimatedRotation(
+              turns: expanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // showModalBottomSheet shobshomoy screen-er NICHE theke ashe — DropdownButton-er
-  // ulta-dike (upore) khule jawar problem eta diye permanently fix hoyeche.
-  Future<void> _showMonthSheet(Color primary) async {
-    final picked = await showModalBottomSheet<int>(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-      builder: (ctx) => SafeArea(
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: 12,
-          itemBuilder: (ctx, i) => ListTile(
-            title: Text(trMonthNames[i]),
-            trailing: (i + 1 == month) ? Icon(Icons.check, color: primary) : null,
-            onTap: () => Navigator.pop(ctx, i + 1),
-          ),
-        ),
+  Widget _monthExpandGrid(Color primary) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: List.generate(12, (i) {
+          final selected = (i + 1) == month;
+          return _pickChip(trMonthNames[i], selected, primary, () {
+            setState(() {
+              month = i + 1;
+              _monthExpanded = false;
+            });
+            _loadMonth();
+          });
+        }),
       ),
     );
-    if (picked == null) return;
-    setState(() => month = picked);
-    _loadMonth();
   }
 
-  Future<void> _showYearSheet(Color primary) async {
+  Widget _yearExpandGrid(Color primary) {
     final years = List.generate(11, (i) => DateTime.now().year - 5 + i);
-    final picked = await showModalBottomSheet<int>(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-      builder: (ctx) => SafeArea(
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: years.length,
-          itemBuilder: (ctx, i) => ListTile(
-            title: Text('${years[i]}'),
-            trailing: (years[i] == year) ? Icon(Icons.check, color: primary) : null,
-            onTap: () => Navigator.pop(ctx, years[i]),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: years.map((y) {
+          final selected = y == year;
+          return _pickChip('$y', selected, primary, () {
+            setState(() {
+              year = y;
+              _yearExpanded = false;
+            });
+            _loadMonth();
+          });
+        }).toList(),
       ),
     );
-    if (picked == null) return;
-    setState(() => year = picked);
-    _loadMonth();
+  }
+
+  Widget _pickChip(String label, bool selected, Color primary, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? primary : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: selected ? primary : const Color(0xFFCBD5E1)),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : const Color(0xFF334155))),
+      ),
+    );
   }
 
   Widget _dayTableCard() {
