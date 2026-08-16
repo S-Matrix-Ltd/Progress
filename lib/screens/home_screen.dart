@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -39,8 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
   UserProfile? _profile;
   AppSettings _appSettings = AppSettings();
   double _usdRate = 0;
-  bool _monthExpanded = false;
-  bool _yearExpanded = false;
 
   /// Mark/unmark ba OT hour change korle true hoy, explicit "Save"
   /// button chapa na porjonto storage-e persist hoy na.
@@ -299,56 +298,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return result ?? false;
   }
 
-  /// Password prompt — Reset-er moto beshi sensitive kaj-e ekhono use hoy.
-  Future<bool> _promptPassword(String title) async {
-    if (!mounted) return false;
-    final ctrl = TextEditingController();
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          autofocus: true,
-          decoration: InputDecoration(labelText: tr('password'), border: const OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
-        ],
-      ),
-    );
-    if (proceed != true) return false;
-    final ok = await _auth.verifyPassword(ctrl.text);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('wrong_password')), backgroundColor: const Color(0xFFB91C1C)));
-    }
-    return ok;
-  }
-
-  /// Security setting respect kore: "Require Password" ON thakle password
-  /// prompt dekhay, OFF thakle shudhu ekta shadharon Yes/No confirm dialog.
-  /// Kono khetreই confirmation bad dey na — obossoi kichu na kichu jiggesh kore.
-  Future<bool> _confirmAction(String title, {String? plainTitle}) async {
-    if (_appSettings.requirePasswordOnSave) {
-      return _promptPassword(title);
-    }
-    if (!mounted) return false;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(plainTitle ?? title),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
-        ],
-      ),
-    );
-    return confirmed ?? false;
-  }
-
   Future<void> _onStatusTap(int idx, String type) async {
     final entry = days[idx];
     final statuses = List<String>.from(entry.statuses);
@@ -449,30 +398,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     setState(() => _dirty = false);
     _showSuccessMsg(tr('changes_saved_msg'));
-  }
-
-  Future<void> _handleReset() async {
-    final verified = await _confirmAction(tr('reset_month_password_title'), plainTitle: tr('reset_month_title'));
-    if (!verified) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(tr('reset_month_title')),
-        content: Text('${trMonthNames[month - 1]} $year ${tr('reset_month_confirm')}'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('reset'), style: const TextStyle(color: Color(0xFFB91C1C)))),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      setState(() {
-        days = List.generate(_daysInMonth(year, month), (_) => DayEntry());
-        _dirty = false;
-      });
-      _recalc();
-      await _autoSave();
-    }
   }
 
   @override
@@ -788,137 +713,142 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border(left: BorderSide(color: opt.primary, width: 4)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(Icons.calendar_month, size: 18, color: opt.primary),
-              const SizedBox(width: 10),
-              Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
-              _pickerChip(trMonthNames[month - 1], _monthExpanded, () {
-                setState(() {
-                  _monthExpanded = !_monthExpanded;
-                  _yearExpanded = false;
-                });
-              }),
-              const SizedBox(width: 8),
-              _pickerChip('$year', _yearExpanded, () {
-                setState(() {
-                  _yearExpanded = !_yearExpanded;
-                  _monthExpanded = false;
-                });
-              }),
-              const SizedBox(width: 4),
-              IconButton(
-                onPressed: _handleReset,
-                icon: const Icon(Icons.refresh, size: 19, color: Color(0xFFB91C1C)),
-                tooltip: tr('reset'),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          Icon(Icons.calendar_month, size: 18, color: opt.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+          InkWell(
+            onTap: _openMonthYearWheelPicker,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFCBD5E1)),
               ),
-            ],
-          ),
-          // Picker box-er thik nichei inline-e expand hoy (bottom-sheet
-          // popup na) — select korle abar compress hoye close hoye jay.
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            child: _monthExpanded
-                ? _monthExpandGrid(opt.primary)
-                : (_yearExpanded ? _yearExpandGrid(opt.primary) : const SizedBox.shrink()),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${trMonthNames[month - 1]} $year', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.unfold_more, size: 16, color: Color(0xFF64748B)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _pickerChip(String label, bool expanded, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFCBD5E1)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            const SizedBox(width: 4),
-            AnimatedRotation(
-              turns: expanded ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
+  /// Wheel-style (iOS date-picker moto) month/year select — scroll kore
+  /// select korte hoy, tarpor "Confirm" e chaple apply hoy.
+  Future<void> _openMonthYearWheelPicker() async {
+    if (!(await _confirmDiscardIfDirty())) return;
+    final opt = themeOptionFor(themeNotifier.value);
+    int tempMonthIdx = month - 1;
+    final years = List.generate(21, (i) => DateTime.now().year - 10 + i);
+    int tempYearIdx = years.indexOf(year);
+    if (tempYearIdx < 0) tempYearIdx = years.indexOf(DateTime.now().year);
+
+    final result = await showModalBottomSheet<Map<String, int>>(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 14),
+                Text(tr('month_year'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: opt.primary)),
+                SizedBox(
+                  height: 190,
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Container(
+                          height: 42,
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(color: opt.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoPicker(
+                              scrollController: FixedExtentScrollController(initialItem: tempMonthIdx),
+                              itemExtent: 42,
+                              onSelectedItemChanged: (i) => tempMonthIdx = i,
+                              children: trMonthNames
+                                  .map((m) => Center(child: Text(m, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))))
+                                  .toList(),
+                            ),
+                          ),
+                          Expanded(
+                            child: CupertinoPicker(
+                              scrollController: FixedExtentScrollController(initialItem: tempYearIdx),
+                              itemExtent: 42,
+                              onSelectedItemChanged: (i) => tempYearIdx = i,
+                              children: years
+                                  .map((y) => Center(child: Text('$y', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))))
+                                  .toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, {'month': tempMonthIdx + 1, 'year': years[tempYearIdx]}),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: opt.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text(tr('confirm')),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
+
+    if (result == null || !mounted) return;
+    setState(() {
+      month = result['month']!;
+      year = result['year']!;
+      _dirty = false;
+    });
+    _loadMonth();
   }
 
-  Widget _monthExpandGrid(Color primary) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: List.generate(12, (i) {
-          final selected = (i + 1) == month;
-          return _pickChip(trMonthNames[i], selected, primary, () async {
-            if (!(await _confirmDiscardIfDirty())) return;
-            setState(() {
-              month = i + 1;
-              _monthExpanded = false;
-              _dirty = false;
-            });
-            _loadMonth();
-          });
-        }),
+  Widget _colHeaderBox(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(8),
       ),
-    );
-  }
-
-  Widget _yearExpandGrid(Color primary) {
-    final years = List.generate(11, (i) => DateTime.now().year - 5 + i);
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: years.map((y) {
-          final selected = y == year;
-          return _pickChip('$y', selected, primary, () async {
-            if (!(await _confirmDiscardIfDirty())) return;
-            setState(() {
-              year = y;
-              _yearExpanded = false;
-              _dirty = false;
-            });
-            _loadMonth();
-          });
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _pickChip(String label, bool selected, Color primary, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? primary : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: selected ? primary : const Color(0xFFCBD5E1)),
-        ),
-        child: Text(label,
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : const Color(0xFF334155))),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        softWrap: true,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, height: 1.15),
       ),
     );
   }
@@ -936,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [opt.headerGradient[1], opt.headerGradient.last]),
@@ -944,11 +874,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Row(
               children: [
-                Expanded(flex: 3, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
-                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
-                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
-                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
+                Expanded(flex: 3, child: _colHeaderBox(tr('col_date'))),
+                const SizedBox(width: 4),
+                Expanded(flex: 1, child: _colHeaderBox(tr('col_ot'))),
+                const SizedBox(width: 4),
+                Expanded(flex: 2, child: _colHeaderBox(tr('col_night'))),
+                const SizedBox(width: 4),
+                Expanded(flex: 2, child: _colHeaderBox(tr('col_duty'))),
+                const SizedBox(width: 4),
+                Expanded(flex: 2, child: _colHeaderBox(tr('col_off'))),
               ],
             ),
           ),

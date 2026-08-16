@@ -3,6 +3,7 @@ import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
 import '../models/theme_option.dart';
+import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service.dart';
@@ -12,6 +13,7 @@ import 'change_password_screen.dart';
 import 'data_history_screen.dart';
 import 'login_screen.dart';
 import 'month_view_screen.dart';
+import 'register_screen.dart' show kSecurityQuestions;
 
 /// Right-side theke slide-in hoye ashe emon route — Settings-er
 /// protyekta section (Profile / Appearance / Rates / Reminder /
@@ -19,12 +21,18 @@ import 'month_view_screen.dart';
 /// back gele shei animation reverse hoye "slide out" hoye jay.
 Route<T> slideInRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
-    transitionDuration: const Duration(milliseconds: 280),
-    reverseTransitionDuration: const Duration(milliseconds: 220),
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final tween = Tween(begin: const Offset(1, 0), end: Offset.zero).chain(CurveTween(curve: Curves.easeOutCubic));
-      return SlideTransition(position: animation.drive(tween), child: child);
+      // Smooth slide + fade combo — age shudhu slide chilo, ekhon
+      // shathe shathe fade-in-o hoy, tai transition ta aro "soft" lage.
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final slideTween = Tween(begin: const Offset(0.08, 0), end: Offset.zero).chain(CurveTween(curve: Curves.easeOutCubic));
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(position: animation.drive(slideTween), child: child),
+      );
     },
   );
 }
@@ -245,37 +253,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
   Widget _card(List<Widget> children) => Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 14, offset: const Offset(0, 4))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
       );
 
   Widget _navTile(IconData icon, String title, String subtitle, VoidCallback onTap, {Color? color}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, color: color ?? Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: color)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
-                ],
+    final tileColor = color ?? Theme.of(context).colorScheme.primary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: tileColor.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: tileColor, size: 20),
               ),
-            ),
-            const Icon(Icons.chevron_right, size: 20, color: Color(0xFF94A3B8)),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: color)),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.all(4),
+                child: const Icon(Icons.chevron_right, size: 16, color: Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -297,6 +318,7 @@ class _ProfilePanelState extends State<ProfilePanel> {
   final _idCtrl = TextEditingController();
   final _companyCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  String _username = '';
   bool _loading = true;
   bool _dirty = false;
 
@@ -313,6 +335,7 @@ class _ProfilePanelState extends State<ProfilePanel> {
       _idCtrl.text = p.employeeId;
       _companyCtrl.text = p.company;
       _addressCtrl.text = p.address;
+      _username = p.username;
     }
     if (!mounted) return;
     setState(() => _loading = false);
@@ -345,6 +368,32 @@ class _ProfilePanelState extends State<ProfilePanel> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Username shudhu dekhano hoy (login credential, tai edit-jogyo na).
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.alternate_email, size: 18, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tr('username'), style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(_username, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
           buildTextField('Name', _nameCtrl, onChanged: _markDirty),
           buildTextField('Employee ID', _idCtrl, onChanged: _markDirty),
           buildTextField('Company', _companyCtrl, onChanged: _markDirty),
@@ -544,8 +593,12 @@ class _SecurityPanelState extends State<SecurityPanel> {
   final _auth = AuthService();
   final _settingsService = SettingsService();
   AppSettings _settings = AppSettings();
+  UserProfile? _profile;
+  final _answerCtrl = TextEditingController();
+  String? _selectedQuestion;
   bool _loading = true;
   bool _dirty = false;
+  bool _savingQuestion = false;
 
   @override
   void initState() {
@@ -555,11 +608,33 @@ class _SecurityPanelState extends State<SecurityPanel> {
 
   Future<void> _load() async {
     final s = await _settingsService.load();
+    final p = await _auth.getProfile();
     if (!mounted) return;
     setState(() {
       _settings = s;
+      _profile = p;
+      _selectedQuestion = (p != null && p.securityQuestion.trim().isNotEmpty) ? p.securityQuestion : null;
       _loading = false;
     });
+  }
+
+  /// Security question/answer alada, nijer verify+save flow — main
+  /// "Require Password" toggle-er dirty/save cycle theke independent.
+  Future<void> _updateSecurityQuestion() async {
+    if (_selectedQuestion == null || _answerCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr('security_question_required')), backgroundColor: const Color(0xFFB91C1C)));
+      return;
+    }
+    final verified = await verifyWithPasswordPrompt(context, _auth);
+    if (!verified) return;
+    setState(() => _savingQuestion = true);
+    await _auth.updateSecurityQuestion(_selectedQuestion!, _answerCtrl.text);
+    if (!mounted) return;
+    setState(() => _savingQuestion = false);
+    _answerCtrl.clear();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(tr('saved_msg')), backgroundColor: const Color(0xFF047857)));
   }
 
   void _markDirty() {
@@ -639,6 +714,42 @@ class _SecurityPanelState extends State<SecurityPanel> {
             title: Text(tr('require_password_save'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
             subtitle: Text(_settings.requirePasswordOnSave ? 'ON' : 'OFF', style: const TextStyle(fontSize: 11)),
             activeColor: primary,
+          ),
+          const Divider(height: 32),
+          Text(tr('security_question_setup'), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _selectedQuestion,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: tr('security_question'),
+              prefixIcon: const Icon(Icons.help_outline, size: 20),
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            items: kSecurityQuestions
+                .map((q) => DropdownMenuItem(value: q, child: Text(q, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedQuestion = v),
+          ),
+          const SizedBox(height: 10),
+          buildTextField(tr('security_answer'), _answerCtrl),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _savingQuestion ? null : _updateSecurityQuestion,
+              icon: _savingQuestion
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.save_outlined, size: 17),
+              label: Text(tr('save')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: primary,
+                side: BorderSide(color: primary.withOpacity(0.4)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
           ),
         ],
       ),

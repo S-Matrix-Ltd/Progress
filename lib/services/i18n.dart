@@ -178,6 +178,15 @@ const Map<String, Map<String, String>> _kStrings = {
   },
   'search_month_hint': {'en': 'Search month or year...', 'bn': 'মাস বা বছর সার্চ করুন...'},
   'no_search_results': {'en': 'No matching month found', 'bn': 'মিলে যাওয়া কোনো মাস পাওয়া যায়নি'},
+  'security_question_setup': {'en': 'Set up a security question for password recovery', 'bn': 'পাসওয়ার্ড উদ্ধারের জন্য একটি নিরাপত্তা প্রশ্ন সেট করুন'},
+  'security_question': {'en': 'Security Question', 'bn': 'নিরাপত্তা প্রশ্ন'},
+  'security_answer': {'en': 'Your Answer', 'bn': 'আপনার উত্তর'},
+  'security_question_required': {'en': 'Please choose a security question and provide an answer', 'bn': 'দয়া করে একটি নিরাপত্তা প্রশ্ন বেছে নিয়ে উত্তর দিন'},
+  'recover_by_id': {'en': 'Recover with Employee ID', 'bn': 'Employee ID দিয়ে উদ্ধার করুন'},
+  'recover_by_question': {'en': 'Recover with Security Question', 'bn': 'নিরাপত্তা প্রশ্ন দিয়ে উদ্ধার করুন'},
+  'enter_username_first': {'en': 'Enter your username first', 'bn': 'প্রথমে আপনার ইউজারনেম লিখুন'},
+  'no_security_question_set': {'en': 'No security question was set for this account', 'bn': 'এই অ্যাকাউন্টের জন্য কোনো নিরাপত্তা প্রশ্ন সেট করা নেই'},
+  'load_question': {'en': 'Load Question', 'bn': 'প্রশ্ন লোড করুন'},
 };
 
 String tr(String key) {

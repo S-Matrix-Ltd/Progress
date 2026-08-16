@@ -5,6 +5,14 @@ import 'home_screen.dart';
 
 const Color kPrimaryColor = Color(0xFF3730A3);
 
+const List<String> kSecurityQuestions = [
+  "What is your mother's name?",
+  'What is your favorite color?',
+  'What was the name of your first school?',
+  'What is your favorite food?',
+  'What city were you born in?',
+];
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
   @override
@@ -22,6 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _securityAnswerCtrl = TextEditingController();
+  String? _securityQuestion;
 
   bool _loading = false;
   bool _obscure = true;
@@ -32,6 +42,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showMsg(tr('passwords_not_match'));
       return;
     }
+    if (_securityQuestion == null || _securityAnswerCtrl.text.trim().isEmpty) {
+      _showMsg(tr('security_question_required'));
+      return;
+    }
     setState(() => _loading = true);
     final error = await _auth.register(
       name: _nameCtrl.text,
@@ -40,6 +54,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       address: _addressCtrl.text,
       username: _usernameCtrl.text,
       password: _passwordCtrl.text,
+      securityQuestion: _securityQuestion!,
+      securityAnswer: _securityAnswerCtrl.text,
     );
     setState(() => _loading = false);
     if (!mounted) return;
@@ -102,6 +118,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _passwordField(_passwordCtrl, tr('password')),
                           const SizedBox(height: 12),
                           _passwordField(_confirmCtrl, tr('confirm_password')),
+                          const Divider(height: 32),
+                          Text(tr('security_question_setup'),
+                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: _securityQuestion,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: tr('security_question'),
+                              prefixIcon: const Icon(Icons.help_outline, size: 20),
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            items: kSecurityQuestions
+                                .map((q) => DropdownMenuItem(value: q, child: Text(q, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)))
+                                .toList(),
+                            onChanged: (v) => setState(() => _securityQuestion = v),
+                          ),
+                          const SizedBox(height: 12),
+                          _field(_securityAnswerCtrl, tr('security_answer'), Icons.question_answer_outlined, required: true),
                           const SizedBox(height: 20),
                           _loading
                               ? const Center(child: CircularProgressIndicator())

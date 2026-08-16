@@ -15,6 +15,10 @@ class AuthService {
     return sha256.convert(bytes).toString();
   }
 
+  /// Security-question-er answer hash korar age normalize kore (trim +
+  /// lowercase) — jate case/spacing mismatch-e valid answer o fail na kore.
+  String hashAnswer(String plain) => hashPassword(plain.trim().toLowerCase());
+
   Future<bool> isRegistered() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_profileKey) != null;
@@ -45,6 +49,8 @@ class AuthService {
     required String address,
     required String username,
     required String password,
+    String securityQuestion = '',
+    String securityAnswer = '',
   }) async {
     if (name.trim().isEmpty || username.trim().isEmpty || password.isEmpty) {
       return 'Name, Username o Password lagbe';
@@ -59,6 +65,8 @@ class AuthService {
       address: address.trim(),
       username: username.trim(),
       passwordHash: hashPassword(password),
+      securityQuestion: securityQuestion.trim(),
+      securityAnswerHash: securityAnswer.trim().isEmpty ? '' : hashAnswer(securityAnswer),
     );
     await _saveProfile(profile);
     final prefs = await SharedPreferences.getInstance();
@@ -122,6 +130,17 @@ class AuthService {
     await _saveProfile(profile);
   }
 
+  /// Security question/answer update — Settings-er Security panel theke.
+  Future<void> updateSecurityQuestion(String question, String answer) async {
+    final profile = await getProfile();
+    if (profile == null) return;
+    profile.securityQuestion = question.trim();
+    if (answer.trim().isNotEmpty) {
+      profile.securityAnswerHash = hashAnswer(answer);
+    }
+    await _saveProfile(profile);
+  }
+
   /// Kono sensitive kaj (reset / mark-unmark) korar age password verify.
   Future<bool> verifyPassword(String password) async {
     final profile = await getProfile();
@@ -144,6 +163,45 @@ class AuthService {
     if (profile.username.trim().toLowerCase() != username.trim().toLowerCase() ||
         profile.employeeId.trim().toLowerCase() != employeeId.trim().toLowerCase()) {
       return 'Username ba Employee ID mile ni';
+    }
+    if (newPassword.length < 4) {
+      return 'Notun Password kompokkhe 4 character hote hobe';
+    }
+    profile.passwordHash = hashPassword(newPassword);
+    await _saveProfile(profile);
+    return null;
+  }
+
+  /// Ei username-er jonne security question ta ki, seta return kore
+  /// (Forgot Password-er dwitiyo recovery system-e dekhanor jonne).
+  /// Kono question set kora na thakle ba username na mile null return kore.
+  Future<String?> getSecurityQuestionFor(String username) async {
+    final profile = await getProfile();
+    if (profile == null) return null;
+    if (profile.username.trim().toLowerCase() != username.trim().toLowerCase()) return null;
+    if (profile.securityQuestion.trim().isEmpty || profile.securityAnswerHash.isEmpty) return null;
+    return profile.securityQuestion;
+  }
+
+  /// Forgot Password — dwitiyo (alternative) recovery system: Username +
+  /// Security Question-er shothik answer dile notun password set kora jay.
+  Future<String?> resetPasswordWithSecurityAnswer({
+    required String username,
+    required String answer,
+    required String newPassword,
+  }) async {
+    final profile = await getProfile();
+    if (profile == null) {
+      return 'Kono account registered nei';
+    }
+    if (profile.username.trim().toLowerCase() != username.trim().toLowerCase()) {
+      return 'Username mile ni';
+    }
+    if (profile.securityAnswerHash.isEmpty) {
+      return 'Ei account-e kono security question set kora nei';
+    }
+    if (profile.securityAnswerHash != hashAnswer(answer)) {
+      return 'Answer ta thik hoyni';
     }
     if (newPassword.length < 4) {
       return 'Notun Password kompokkhe 4 character hote hobe';
