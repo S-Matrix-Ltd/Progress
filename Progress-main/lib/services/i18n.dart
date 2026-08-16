@@ -149,8 +149,8 @@ const Map<String, Map<String, String>> _kStrings = {
   'security_desc': {'en': 'Password protection for saving & entries', 'bn': 'সেভ ও এন্ট্রির জন্য পাসওয়ার্ড সুরক্ষা'},
   'require_password_save': {'en': 'Require Password', 'bn': 'পাসওয়ার্ড আবশ্যক'},
   'require_password_save_desc': {
-    'en': 'When ON, resetting a month or deleting saved history will ask for your account password. Marking/unmarking entries and saving no longer require a password — just a quick confirmation.',
-    'bn': 'চালু থাকলে কোনো মাস রিসেট বা সেভ করা ইতিহাস মুছে ফেলার সময় অ্যাকাউন্ট পাসওয়ার্ড চাইবে। এন্ট্রি মার্ক/আনমার্ক ও সেভ করতে এখন আর পাসওয়ার্ড লাগে না — শুধু দ্রুত একটা নিশ্চিতকরণ দেখাবে।'
+    'en': 'When ON, marking/unmarking entries and saving will ask for your account password. When OFF, only a Yes/No confirmation will be shown.',
+    'bn': 'চালু থাকলে এন্ট্রি মার্ক/আনমার্ক ও সেভ করার সময় অ্যাকাউন্ট পাসওয়ার্ড চাইবে। বন্ধ থাকলে শুধু হ্যাঁ/না নিশ্চিতকরণ দেখাবে।'
   },
   'mark_confirm_title': {'en': 'Mark this entry?', 'bn': 'এই এন্ট্রি মার্ক করবেন?'},
   'unmark_confirm_title': {'en': 'Unmark this entry?', 'bn': 'এই এন্ট্রি আনমার্ক করবেন?'},
@@ -176,8 +176,6 @@ const Map<String, Map<String, String>> _kStrings = {
   'auto_update_found_body': {
     'en': 'A new version was found in the background:', 'bn': 'ব্যাকগ্রাউন্ডে একটি নতুন ভার্সন পাওয়া গেছে:'
   },
-  'search_month_hint': {'en': 'Search month or year...', 'bn': 'মাস বা বছর সার্চ করুন...'},
-  'no_search_results': {'en': 'No matching month found', 'bn': 'মিলে যাওয়া কোনো মাস পাওয়া যায়নি'},
 };
 
 String tr(String key) {

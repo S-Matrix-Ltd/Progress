@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -45,6 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Mark/unmark ba OT hour change korle true hoy, explicit "Save"
   /// button chapa na porjonto storage-e persist hoy na.
   bool _dirty = false;
+
+  static const _lastUpdateCheckKey = 'auto-update-check-last-v1';
 
   void _onGlobalSettingsChanged() {
     if (mounted) setState(() {});
@@ -96,13 +99,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _autoCheckUpdateSilently();
   }
 
-  /// App khulleyi background-e update check kore (throttle nei — protibar
-  /// app khule একবার কতে, jate "automatic" feature ta ashole kaj kore).
-  /// Fail hole (network/DNS issue etc.) UI-te kono error dekhano hoy na —
-  /// chup chap ignore kore, karon eta automatic background check, user
-  /// kono button chapeni. Update paoa gele shudhu tokhon ekta dialog dekhay.
+  /// App khulleyi background-e ekbar (din-e ekbar-i, baar baar network
+  /// call na kore) update check kore. Fail hole (network/DNS issue etc.)
+  /// UI-te kono error dekhano hoy na — chup chap ignore kore, karon eta
+  /// automatic background check, user kono button chapeni. Update paoa
+  /// gele shudhu tokhon ekta dialog dekhay.
   Future<void> _autoCheckUpdateSilently() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastMs = prefs.getInt(_lastUpdateCheckKey) ?? 0;
+      final last = DateTime.fromMillisecondsSinceEpoch(lastMs);
+      if (DateTime.now().difference(last) < const Duration(hours: 20)) return;
+      await prefs.setInt(_lastUpdateCheckKey, DateTime.now().millisecondsSinceEpoch);
+
       final result = await _updateService.checkForUpdate(kAppVersion);
       if (!result.success || !result.hasUpdate) return; // chup chap ignore
       if (!mounted) return;
@@ -212,94 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  /// Notun, "smooth" (scale+fade animation shoho, rounded card) confirm
-  /// popup — Unmark ar Save-e ekhon ei ekta simple Yes/No popup use hoy,
-  /// password chay na (age Reset-er moto password lagto, ekhon r na).
-  Future<bool> _smoothConfirm({
-    required IconData icon,
-    required String title,
-    String? message,
-    String? confirmLabel,
-    Color? accent,
-  }) async {
-    if (!mounted) return false;
-    final color = accent ?? themeOptionFor(themeNotifier.value).primary;
-    final result = await showGeneralDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.38),
-      transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (ctx, anim1, anim2) => const SizedBox.shrink(),
-      transitionBuilder: (ctx, anim, secondary, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
-        return Opacity(
-          opacity: anim.value.clamp(0.0, 1.0),
-          child: Transform.scale(
-            scale: 0.85 + (0.15 * curved.value),
-            child: Center(
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40),
-                  padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 26, offset: const Offset(0, 10))],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
-                        child: Icon(icon, color: color, size: 26),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
-                      if (message != null) ...[
-                        const SizedBox(height: 8),
-                        Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: Theme.of(context).textTheme.bodySmall?.color)),
-                      ],
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
-                              child: Text(tr('cancel')),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: color,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: Text(confirmLabel ?? tr('confirm')),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-    return result ?? false;
-  }
-
-  /// Password prompt — Reset-er moto beshi sensitive kaj-e ekhono use hoy.
+  /// Password prompt — Reset o Unmark-er moto sensitive kaj-e use hoy.
   Future<bool> _promptPassword(String title) async {
     if (!mounted) return false;
     final ctrl = TextEditingController();
@@ -366,15 +288,13 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // Mark: kono confirmation lagbe na — shathe shathe apply hoy.
-    // Unmark: ekta smooth popup e confirm korte hoy (password chay na).
-    if (!marking) {
-      final ok = await _smoothConfirm(
-        icon: Icons.remove_circle_outline,
-        title: tr('unmark_confirm_title'),
-      );
-      if (!ok) return;
-    }
+    // Mark ba Unmark — dutokheteই ekhon obossoi confirmation lagbe
+    // (age shudhu Unmark-e password lagto, Mark-e kichuই lagto na).
+    final ok = await _confirmAction(
+      marking ? tr('mark_password_title') : tr('unmark_password_title'),
+      plainTitle: marking ? tr('mark_confirm_title') : tr('unmark_confirm_title'),
+    );
+    if (!ok) return;
 
     if (marking) {
       if (type == 'dayoff') {
@@ -430,20 +350,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return leave ?? false;
   }
 
-  /// Explicit "Save" button — ekhon shudhu ekta smooth confirm popup
-  /// dekhay (age double dialog + password lagto, ekhon r na).
+  /// Explicit "Save" button — double confirmation flow:
+  /// 1) "Save changes?" shadharon confirm
+  /// 2) Security setting onujayi password OR abar ekta confirm
+  /// Dutoyi "hae" hole tobei actual storage-e persist hoy.
   Future<void> _handleSave() async {
     if (!_dirty) {
       _showMsg(tr('no_changes_to_save'));
       return;
     }
-    final ok = await _smoothConfirm(
-      icon: Icons.save_outlined,
-      title: tr('save_confirm_title_1'),
-      message: tr('save_confirm_body_1'),
-      confirmLabel: tr('save'),
+    final step1 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('save_confirm_title_1')),
+        content: Text(tr('save_confirm_body_1')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
     );
-    if (!ok) return;
+    if (step1 != true) return;
+
+    final step2 = await _confirmAction(
+      tr('save_password_title'),
+      plainTitle: tr('save_confirm_title_2'),
+    );
+    if (!step2) return;
 
     await _autoSave();
     if (!mounted) return;

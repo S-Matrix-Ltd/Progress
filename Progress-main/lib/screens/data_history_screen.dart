@@ -17,22 +17,13 @@ class DataHistoryScreen extends StatefulWidget {
 class _DataHistoryScreenState extends State<DataHistoryScreen> {
   final _storage = StorageService();
   final _auth = AuthService();
-  final _searchCtrl = TextEditingController();
   List<MonthSummary> _months = [];
-  List<MonthSummary> _filtered = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _load();
-    _searchCtrl.addListener(_applyFilter);
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -41,26 +32,6 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
     setState(() {
       _months = months;
       _loading = false;
-    });
-    _applyFilter();
-  }
-
-  /// Search box-e month/year likhle live filter hoy (Bangla/English
-  /// month naam duitoই diye search kora jay).
-  void _applyFilter() {
-    final q = _searchCtrl.text.trim().toLowerCase();
-    if (!mounted) return;
-    setState(() {
-      if (q.isEmpty) {
-        _filtered = List.from(_months);
-        return;
-      }
-      _filtered = _months.where((m) {
-        final bnName = kMonthNamesByLang['bn']![m.month - 1].toLowerCase();
-        final enName = kMonthNamesByLang['en']![m.month - 1].toLowerCase();
-        final yearStr = m.year.toString();
-        return bnName.contains(q) || enName.contains(q) || yearStr.contains(q) || '$enName $yearStr'.contains(q);
-      }).toList();
     });
   }
 
@@ -119,42 +90,16 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
     final primary = themeOptionFor(themeNotifier.value).primary;
     return Scaffold(
       appBar: AppBar(title: Text(tr('data_history'))),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: tr('search_month_hint'),
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchCtrl.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => _searchCtrl.clear(),
-                      ),
-                isDense: true,
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _months.isEmpty
-                    ? Center(child: Text(tr('no_saved_data')))
-                    : _filtered.isEmpty
-                        ? Center(child: Text(tr('no_search_results')))
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
-                            itemCount: _filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (context, i) {
-                              final m = _filtered[i];
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _months.isEmpty
+              ? Center(child: Text(tr('no_saved_data')))
+              : ListView.separated(
+                  padding: const EdgeInsets.all(14),
+                  itemCount: _months.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, i) {
+                    final m = _months[i];
                     return Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
@@ -209,11 +154,8 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
                         ),
                       ),
                     );
-                            },
-                          ),
-          ),
-        ],
-      ),
+                  },
+                ),
     );
   }
 }
