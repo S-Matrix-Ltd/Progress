@@ -162,24 +162,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _auth = AuthService();
-  final _storage = StorageService();
-  List<MonthSummary> _months = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMonths();
-  }
-
-  Future<void> _loadMonths() async {
-    final months = await _storage.listAllMonths();
-    if (!mounted) return;
-    setState(() {
-      _months = months;
-      _loading = false;
-    });
-  }
 
   Future<void> _openPanel(Widget panel) async {
     final saved = await Navigator.push(context, slideInRoute<bool>(panel));
@@ -207,15 +189,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (route) => false);
   }
 
-  Future<void> _loadMonth(MonthSummary m) async {
-    // Age eta Home-e pop kore direct edit-mode-e niye jeto — ekhon
-    // shudhu READ-ONLY view-e push kore, main interface touch hoy na.
-    await Navigator.push(context, slideInRoute(MonthViewScreen(year: m.year, month: m.month)));
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
       appBar: AppBar(title: Text(tr('settings'))),
@@ -236,34 +211,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _navTile(Icons.lock_outline, tr('change_password'), 'Update account password', () async {
               await Navigator.push(context, slideInRoute(const ChangePasswordScreen()));
             }, color: primary),
+            const Divider(height: 1),
+            _navTile(Icons.history, tr('data_history'), tr('data_history_desc'), () async {
+              await Navigator.push(context, slideInRoute(const DataHistoryScreen()));
+            }, color: primary),
           ]),
-          const SizedBox(height: 16),
-
-          _sectionTitle(tr('previous_month_history'), primary),
-          _months.isEmpty
-              ? _card([Text(tr('no_saved_data'), style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)))])
-              : Column(
-                  children: [
-                    ..._months.take(4).map((m) => _historyCard(m, primary)),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          await Navigator.push(context, slideInRoute(const DataHistoryScreen()));
-                        },
-                        icon: const Icon(Icons.history, size: 17),
-                        label: Text(tr('data_history')),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: primary,
-                          side: BorderSide(color: primary.withOpacity(0.4)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
           const SizedBox(height: 16),
 
           _card([
@@ -286,78 +238,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  String _trimZero(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
-
-  /// Smart, card-style month history row — age plain "label + Load button"
-  /// list chilo, ekhon protyekta card-e month/year, mini stat chips
-  /// (OT/Night/Duty/Off), r ekta "View" button ache — DataHistoryScreen
-  /// er card-er sathe visually consistent.
-  Widget _historyCard(MonthSummary m, Color primary) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border(left: BorderSide(color: primary, width: 4)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _loadMonth(m),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(color: primary.withOpacity(0.12), borderRadius: BorderRadius.circular(11)),
-                child: Icon(Icons.calendar_month, color: primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${trMonthNames[m.month - 1]} ${m.year}',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
-                    const SizedBox(height: 5),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        _miniStat('OT ${_trimZero(m.otHours)}h', const Color(0xFF047857)),
-                        _miniStat('${tr('night')} ${m.night}', const Color(0xFF7C3AED)),
-                        _miniStat('${tr('duty')} ${m.duty}', const Color(0xFF0369A1)),
-                        _miniStat('${tr('day_off')} ${m.dayOff}', const Color(0xFFB91C1C)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(m.total.toStringAsFixed(0), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primary)),
-                  const SizedBox(height: 2),
-                  Icon(Icons.chevron_right, size: 18, color: primary.withOpacity(0.6)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _miniStat(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: color)),
-    );
-  }
 
   Widget _sectionTitle(String t, Color color) => Padding(
         padding: const EdgeInsets.only(bottom: 8, left: 2),

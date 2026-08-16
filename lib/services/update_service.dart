@@ -21,6 +21,17 @@ class UpdateCheckResult {
 /// ache kina, thakleyi tobe link open korার permission (dialog) dekhay.
 class UpdateService {
   Future<UpdateCheckResult> checkForUpdate(String currentVersion) async {
+    // Prothom try fail korle (transient network glitch hote pare) ekbar
+    // retry kore — tarpor-o fail korle tobei error dekhabe.
+    var result = await _attempt(currentVersion);
+    if (!result.success) {
+      await Future.delayed(const Duration(seconds: 2));
+      result = await _attempt(currentVersion);
+    }
+    return result;
+  }
+
+  Future<UpdateCheckResult> _attempt(String currentVersion) async {
     try {
       final res = await http.get(
         Uri.parse(kReleasesApiUrl),

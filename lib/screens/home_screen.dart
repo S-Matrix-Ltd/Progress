@@ -809,6 +809,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   _monthExpanded = false;
                 });
               }),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: _handleReset,
+                icon: const Icon(Icons.refresh, size: 19, color: Color(0xFFB91C1C)),
+                tooltip: tr('reset'),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
             ],
           ),
           // Picker box-er thik nichei inline-e expand hoy (bottom-sheet
@@ -1041,10 +1049,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _actionButtons() {
     final opt = themeOptionFor(themeNotifier.value);
-    return Column(
+    return Row(
       children: [
-        SizedBox(
-          width: double.infinity,
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _handleExportPdf,
+            icon: const Icon(Icons.picture_as_pdf, size: 18),
+            label: Text(tr('export_pdf')),
+            style: ElevatedButton.styleFrom(backgroundColor: opt.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
           child: ElevatedButton.icon(
             onPressed: _handleSave,
             icon: Icon(_dirty ? Icons.save : Icons.save_outlined, size: 19),
@@ -1056,28 +1072,6 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _handleExportPdf,
-                icon: const Icon(Icons.picture_as_pdf, size: 18),
-                label: Text(tr('export_pdf')),
-                style: ElevatedButton.styleFrom(backgroundColor: opt.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _handleReset,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: Text(tr('reset')),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFEF2F2), foregroundColor: const Color(0xFFB91C1C), padding: const EdgeInsets.symmetric(vertical: 14)),
-              ),
-            ),
-          ],
         ),
       ],
     );

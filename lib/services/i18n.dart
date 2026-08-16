@@ -178,6 +178,7 @@ const Map<String, Map<String, String>> _kStrings = {
   },
   'search_month_hint': {'en': 'Search month or year...', 'bn': 'মাস বা বছর সার্চ করুন...'},
   'no_search_results': {'en': 'No matching month found', 'bn': 'মিলে যাওয়া কোনো মাস পাওয়া যায়নি'},
+  'data_history_desc': {'en': 'View & search all saved months', 'bn': 'সেভ করা সব মাস দেখুন ও সার্চ করুন'},
 };
 
 String tr(String key) {
