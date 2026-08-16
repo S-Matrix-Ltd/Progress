@@ -10,23 +10,12 @@ const Color kZebra = Color(0xFFF4F7FB);
 const Color kAmberCombo = Color(0xFFD97706);
 
 /// Row background color.
-/// Weekend (Thu/Fri) row-er color ekhon FIXED thake — kono status mark
-/// (Night/Duty/Off) korleo weekend green color change hobe na. Shudhu
-/// non-weekend din-e status mark korle color change hoy.
+/// Notun niyom: Mark kora (Night/Duty/Off Day) status onujayi r kono row
+/// color hoy na — shudhu Weekend (Thu/Fri) row-er fixed green color
+/// thake. Baki shob row plain/zebra thake, protyek row-er majhe shudhu
+/// ekta halka border-line diye alada dekhano hoy.
 Color rowBackgroundColor(DayEntry entry, bool isWeekend, bool isEven) {
   if (isWeekend) return kWeekendBg;
-
-  final s = entry.statuses;
-  if (s.isEmpty) return isEven ? kZebra : Colors.transparent;
-
-  final hasNight = s.contains('night');
-  final hasDuty = s.contains('duty');
-  final hasDayoff = s.contains('dayoff');
-
-  if (hasNight && hasDuty) return kAmberCombo.withOpacity(0.55);
-  if (hasDayoff) return kDayoff.withOpacity(0.42);
-  if (hasNight) return kNight.withOpacity(0.5);
-  if (hasDuty) return kDuty.withOpacity(0.5);
   return isEven ? kZebra : Colors.transparent;
 }
 
@@ -53,9 +42,11 @@ class DayRowWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = rowBackgroundColor(entry, isWeekend, isEven);
-    final isMarked = entry.statuses.isNotEmpty;
-    final onColoredBg = isMarked || isWeekend;
-    final textColor = onColoredBg ? const Color(0xFF0F172A) : const Color(0xFF0F172A);
+    // Ekhon shudhu Weekend row-e color thake, mark kore r kono row-e
+    // color hoy na — tai "onColoredBg" ekhon shudhu isWeekend-er upor
+    // depend kore.
+    final onColoredBg = isWeekend;
+    final textColor = const Color(0xFF0F172A);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
