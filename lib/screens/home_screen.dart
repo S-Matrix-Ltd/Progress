@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -42,11 +43,19 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _monthExpanded = false;
   bool _yearExpanded = false;
 
+  /// Mark/unmark ba OT hour change korle true hoy, explicit "Save"
+  /// button chapa na porjonto storage-e persist hoy na.
+  bool _dirty = false;
+
+  static const _lastUpdateCheckKey = 'auto-update-check-last-v1';
+
   void _onGlobalSettingsChanged() {
     if (mounted) setState(() {});
   }
 
   Future<void> _openSettings() async {
+    if (!(await _confirmDiscardIfDirty())) return;
+    _dirty = false;
     final result = await Navigator.push<Map<String, dynamic>?>(
       context,
       slideInRoute(const SettingsScreen()),
@@ -87,6 +96,41 @@ class _HomeScreenState extends State<HomeScreen> {
     // hishebe Home screen force rebuild kore.
     themeNotifier.addListener(_onGlobalSettingsChanged);
     languageNotifier.addListener(_onGlobalSettingsChanged);
+    _autoCheckUpdateSilently();
+  }
+
+  /// App khulleyi background-e ekbar (din-e ekbar-i, baar baar network
+  /// call na kore) update check kore. Fail hole (network/DNS issue etc.)
+  /// UI-te kono error dekhano hoy na — chup chap ignore kore, karon eta
+  /// automatic background check, user kono button chapeni. Update paoa
+  /// gele shudhu tokhon ekta dialog dekhay.
+  Future<void> _autoCheckUpdateSilently() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastMs = prefs.getInt(_lastUpdateCheckKey) ?? 0;
+      final last = DateTime.fromMillisecondsSinceEpoch(lastMs);
+      if (DateTime.now().difference(last) < const Duration(hours: 20)) return;
+      await prefs.setInt(_lastUpdateCheckKey, DateTime.now().millisecondsSinceEpoch);
+
+      final result = await _updateService.checkForUpdate(kAppVersion);
+      if (!result.success || !result.hasUpdate) return; // chup chap ignore
+      if (!mounted) return;
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('update_available_title')),
+          content: Text('${tr('auto_update_found_body')} v${result.latestVersion}'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('later'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('update_now'))),
+          ],
+        ),
+      );
+      if (proceed == true) await _openReleasesUrl();
+    } catch (_) {
+      // Silent — background check, user-facing error dekhano hobe na.
+    }
   }
 
   @override
@@ -161,7 +205,10 @@ class _HomeScreenState extends State<HomeScreen> {
       totDayOff = dayoff;
       totalAmount = (ot * rOT) + (night * rNight) + (duty * rOFF) + rGross;
     });
-    _autoSave();
+    // Age ekhane protibar _autoSave() call hoto (autosave-on-every-tap).
+    // Ekhon mark/unmark ba OT change shudhu local state/total update kore
+    // — actual storage-e persist shudhu explicit "Save" button chaple hoy
+    // (double confirmation-er por), tai ekhane autosave call kora hoy na.
   }
 
   Future<void> _autoSave() async {
@@ -203,34 +250,67 @@ class _HomeScreenState extends State<HomeScreen> {
     return ok;
   }
 
+  /// Security setting respect kore: "Require Password" ON thakle password
+  /// prompt dekhay, OFF thakle shudhu ekta shadharon Yes/No confirm dialog.
+  /// Kono khetreই confirmation bad dey na — obossoi kichu na kichu jiggesh kore.
+  Future<bool> _confirmAction(String title, {String? plainTitle}) async {
+    if (_appSettings.requirePasswordOnSave) {
+      return _promptPassword(title);
+    }
+    if (!mounted) return false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(plainTitle ?? title),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   Future<void> _onStatusTap(int idx, String type) async {
     final entry = days[idx];
     final statuses = List<String>.from(entry.statuses);
+    final marking = !statuses.contains(type);
 
-    if (statuses.contains(type)) {
-      // Unmark korte password lagbe — bhul kore click hoye gele
-      // accidentally data muche jabe na.
-      final verified = await _promptPassword(tr('unmark_password_title'));
-      if (!verified) return;
-      statuses.remove(type);
-    } else {
+    if (marking) {
       if (type == 'dayoff') {
         if (statuses.contains('night') || statuses.contains('duty')) {
           _showMsg(tr('unmark_dayoff_first'));
           return;
         }
+      } else if (statuses.contains('dayoff')) {
+        _showMsg(tr('dayoff_blocks_others'));
+        return;
+      }
+    }
+
+    // Mark ba Unmark — dutokheteই ekhon obossoi confirmation lagbe
+    // (age shudhu Unmark-e password lagto, Mark-e kichuই lagto na).
+    final ok = await _confirmAction(
+      marking ? tr('mark_password_title') : tr('unmark_password_title'),
+      plainTitle: marking ? tr('mark_confirm_title') : tr('unmark_confirm_title'),
+    );
+    if (!ok) return;
+
+    if (marking) {
+      if (type == 'dayoff') {
         statuses
           ..clear()
           ..add('dayoff');
       } else {
-        if (statuses.contains('dayoff')) {
-          _showMsg(tr('dayoff_blocks_others'));
-          return;
-        }
         statuses.add(type);
       }
+    } else {
+      statuses.remove(type);
     }
-    setState(() => entry.statuses = statuses);
+    setState(() {
+      entry.statuses = statuses;
+      _dirty = true;
+    });
     _recalc();
   }
 
@@ -244,8 +324,68 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showSuccessMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFF047857)),
+    );
+  }
+
+  /// Home screen theke chole jawar age (month/year switch, Settings-e
+  /// jawa) — unsaved (mark/unmark kora kintu Save na kora) change thakle
+  /// shatorko kore, na hole shuture eshe chole jay.
+  Future<bool> _confirmDiscardIfDirty() async {
+    if (!_dirty) return true;
+    if (!mounted) return false;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('unsaved_changes_title')),
+        content: Text(tr('unsaved_home_body')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('stay'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('leave'))),
+        ],
+      ),
+    );
+    return leave ?? false;
+  }
+
+  /// Explicit "Save" button — double confirmation flow:
+  /// 1) "Save changes?" shadharon confirm
+  /// 2) Security setting onujayi password OR abar ekta confirm
+  /// Dutoyi "hae" hole tobei actual storage-e persist hoy.
+  Future<void> _handleSave() async {
+    if (!_dirty) {
+      _showMsg(tr('no_changes_to_save'));
+      return;
+    }
+    final step1 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('save_confirm_title_1')),
+        content: Text(tr('save_confirm_body_1')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
+    );
+    if (step1 != true) return;
+
+    final step2 = await _confirmAction(
+      tr('save_password_title'),
+      plainTitle: tr('save_confirm_title_2'),
+    );
+    if (!step2) return;
+
+    await _autoSave();
+    if (!mounted) return;
+    setState(() => _dirty = false);
+    _showSuccessMsg(tr('changes_saved_msg'));
+  }
+
   Future<void> _handleReset() async {
-    final verified = await _promptPassword(tr('reset_month_password_title'));
+    final verified = await _confirmAction(tr('reset_month_password_title'), plainTitle: tr('reset_month_title'));
     if (!verified) return;
     final confirm = await showDialog<bool>(
       context: context,
@@ -261,8 +401,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirm == true) {
       setState(() {
         days = List.generate(_daysInMonth(year, month), (_) => DayEntry());
+        _dirty = false;
       });
       _recalc();
+      await _autoSave();
     }
   }
 
@@ -652,10 +794,12 @@ class _HomeScreenState extends State<HomeScreen> {
         runSpacing: 8,
         children: List.generate(12, (i) {
           final selected = (i + 1) == month;
-          return _pickChip(trMonthNames[i], selected, primary, () {
+          return _pickChip(trMonthNames[i], selected, primary, () async {
+            if (!(await _confirmDiscardIfDirty())) return;
             setState(() {
               month = i + 1;
               _monthExpanded = false;
+              _dirty = false;
             });
             _loadMonth();
           });
@@ -673,10 +817,12 @@ class _HomeScreenState extends State<HomeScreen> {
         runSpacing: 8,
         children: years.map((y) {
           final selected = y == year;
-          return _pickChip('$y', selected, primary, () {
+          return _pickChip('$y', selected, primary, () async {
+            if (!(await _confirmDiscardIfDirty())) return;
             setState(() {
               year = y;
               _yearExpanded = false;
+              _dirty = false;
             });
             _loadMonth();
           });
@@ -746,6 +892,7 @@ class _HomeScreenState extends State<HomeScreen> {
               entry: days[i],
               onOtChanged: (v) {
                 days[i].ot = v;
+                _dirty = true;
                 _recalc();
               },
               onStatusTap: (type) => _onStatusTap(i, type),
@@ -827,24 +974,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _actionButtons() {
     final opt = themeOptionFor(themeNotifier.value);
-    return Row(
+    return Column(
       children: [
-        Expanded(
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: _handleExportPdf,
-            icon: const Icon(Icons.picture_as_pdf, size: 18),
-            label: Text(tr('export_pdf')),
-            style: ElevatedButton.styleFrom(backgroundColor: opt.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+            onPressed: _handleSave,
+            icon: Icon(_dirty ? Icons.save : Icons.save_outlined, size: 19),
+            label: Text(_dirty ? '${tr('save_changes')} •' : tr('save_changes')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _dirty ? const Color(0xFF047857) : opt.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _handleReset,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: Text(tr('reset')),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFEF2F2), foregroundColor: const Color(0xFFB91C1C), padding: const EdgeInsets.symmetric(vertical: 14)),
-          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _handleExportPdf,
+                icon: const Icon(Icons.picture_as_pdf, size: 18),
+                label: Text(tr('export_pdf')),
+                style: ElevatedButton.styleFrom(backgroundColor: opt.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _handleReset,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(tr('reset')),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFEF2F2), foregroundColor: const Color(0xFFB91C1C), padding: const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ),
+          ],
         ),
       ],
     );

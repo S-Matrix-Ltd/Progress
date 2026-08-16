@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import '../models/day_entry.dart';
+import '../models/theme_option.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../services/i18n.dart';
+import 'settings_screen.dart';
+import 'month_view_screen.dart';
 
 class DataHistoryScreen extends StatefulWidget {
   const DataHistoryScreen({super.key});
@@ -73,8 +77,17 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
 
   String _trimZero(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
 
+  Widget _miniStat(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(6)),
+      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: color)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final primary = themeOptionFor(themeNotifier.value).primary;
     return Scaffold(
       appBar: AppBar(title: Text(tr('data_history'))),
       body: _loading
@@ -88,36 +101,57 @@ class _DataHistoryScreenState extends State<DataHistoryScreen> {
                   itemBuilder: (context, i) {
                     final m = _months[i];
                     return Container(
-                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border(left: BorderSide(color: primary, width: 4)),
                         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('${trMonthNames[m.month - 1]} ${m.year}',
-                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'OT: ${_trimZero(m.otHours)}h  |  Night: ${m.night}  |  Duty: ${m.duty}  |  Off: ${m.dayOff}',
-                                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => Navigator.push(context, slideInRoute(MonthViewScreen(year: m.year, month: m.month))),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(color: primary.withOpacity(0.12), borderRadius: BorderRadius.circular(11)),
+                                child: Icon(Icons.calendar_month, color: primary, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${trMonthNames[m.month - 1]} ${m.year}',
+                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        _miniStat('OT ${_trimZero(m.otHours)}h', const Color(0xFF047857)),
+                                        _miniStat('${tr('night')} ${m.night}', const Color(0xFF7C3AED)),
+                                        _miniStat('${tr('duty')} ${m.duty}', const Color(0xFF0369A1)),
+                                        _miniStat('${tr('day_off')} ${m.dayOff}', const Color(0xFFB91C1C)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text('${tr('total_label')}: ${m.total.toStringAsFixed(2)}',
+                                        style: TextStyle(fontWeight: FontWeight.w800, color: primary, fontSize: 12.5)),
+                                  ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text('${tr('total_label')}: ${m.total.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0369A1))),
-                              ],
-                            ),
+                              ),
+                              IconButton(
+                                onPressed: () => _deleteMonth(m),
+                                icon: const Icon(Icons.delete_outline, color: Color(0xFFB91C1C)),
+                                tooltip: tr('delete'),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            onPressed: () => _deleteMonth(m),
-                            icon: const Icon(Icons.delete_outline, color: Color(0xFFB91C1C)),
-                          ),
-                        ],
+                        ),
                       ),
                     );
                   },

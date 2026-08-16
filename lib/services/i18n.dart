@@ -143,6 +143,39 @@ const Map<String, Map<String, String>> _kStrings = {
   'later': {'en': 'Later', 'bn': 'পরে'},
   'rate_loading': {'en': 'Fetching live rate...', 'bn': 'লাইভ রেট আনা হচ্ছে...'},
   'currency': {'en': 'Currency', 'bn': 'কারেন্সি'},
+
+  // --- Phase 11: security toggle, mark/save double-confirm, smart history, auto-update-check ---
+  'security': {'en': 'Security', 'bn': 'সিকিউরিটি'},
+  'security_desc': {'en': 'Password protection for saving & entries', 'bn': 'সেভ ও এন্ট্রির জন্য পাসওয়ার্ড সুরক্ষা'},
+  'require_password_save': {'en': 'Require Password', 'bn': 'পাসওয়ার্ড আবশ্যক'},
+  'require_password_save_desc': {
+    'en': 'When ON, marking/unmarking entries and saving will ask for your account password. When OFF, only a Yes/No confirmation will be shown.',
+    'bn': 'চালু থাকলে এন্ট্রি মার্ক/আনমার্ক ও সেভ করার সময় অ্যাকাউন্ট পাসওয়ার্ড চাইবে। বন্ধ থাকলে শুধু হ্যাঁ/না নিশ্চিতকরণ দেখাবে।'
+  },
+  'mark_confirm_title': {'en': 'Mark this entry?', 'bn': 'এই এন্ট্রি মার্ক করবেন?'},
+  'unmark_confirm_title': {'en': 'Unmark this entry?', 'bn': 'এই এন্ট্রি আনমার্ক করবেন?'},
+  'mark_password_title': {'en': 'Enter password to mark', 'bn': 'মার্ক করতে পাসওয়ার্ড দিন'},
+  'save_changes': {'en': 'Save Changes', 'bn': 'পরিবর্তন সেভ করুন'},
+  'save_confirm_title_1': {'en': 'Save changes?', 'bn': 'পরিবর্তন সেভ করবেন?'},
+  'save_confirm_body_1': {
+    'en': 'This month\'s marked entries will be saved. Continue?',
+    'bn': 'এই মাসের মার্ক করা এন্ট্রিগুলো সেভ হবে। এগিয়ে যাবেন?'
+  },
+  'save_confirm_title_2': {'en': 'Confirm Save', 'bn': 'সেভ নিশ্চিত করুন'},
+  'save_confirm_body_2': {
+    'en': 'Are you absolutely sure? This will overwrite the previously saved data for this month.',
+    'bn': 'আপনি কি একদম নিশ্চিত? এটি এই মাসের আগের সেভ করা তথ্য মুছে নতুন করে সেভ করবে।'
+  },
+  'changes_saved_msg': {'en': 'Changes saved successfully', 'bn': 'পরিবর্তন সফলভাবে সেভ হয়েছে'},
+  'no_changes_to_save': {'en': 'No changes to save', 'bn': 'সেভ করার মতো কোনো পরিবর্তন নেই'},
+  'unsaved_home_body': {
+    'en': 'You have unmarked/marked entries that are not saved yet. Leave without saving?',
+    'bn': 'আপনার কিছু মার্ক/আনমার্ক করা পরিবর্তন এখনো সেভ হয়নি। সেভ না করে চলে যাবেন?'
+  },
+  'view': {'en': 'View', 'bn': 'দেখুন'},
+  'auto_update_found_body': {
+    'en': 'A new version was found in the background:', 'bn': 'ব্যাকগ্রাউন্ডে একটি নতুন ভার্সন পাওয়া গেছে:'
+  },
 };
 
 String tr(String key) {

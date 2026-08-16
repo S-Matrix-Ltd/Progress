@@ -32,8 +32,28 @@ Route<T> slideInRoute<T>(Widget page) {
 /// Save chapar age password verify kore. Shob edit-panel-e ei ekই
 /// dialog use hoy — profile/rate/appearance/reminder, sob khetre
 /// "view korar shomoy na, SAVE korar shomoy" password chay.
+/// Settings > Security theke "Require Password" off kora thakle
+/// password ar chaibe na — shudhu ekta shadharon Yes/No confirm dialog dekhabe.
 Future<bool> verifyWithPasswordPrompt(BuildContext context, AuthService auth) async {
   if (!context.mounted) return false;
+  final settings = await SettingsService().load();
+  if (!context.mounted) return false;
+
+  if (!settings.requirePasswordOnSave) {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('save_confirm_title_1')),
+        content: Text(tr('save_confirm_body_1')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   final ctrl = TextEditingController();
   final proceed = await showDialog<bool>(
     context: context,
@@ -211,6 +231,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(height: 1),
             _navTile(Icons.alarm, tr('daily_reminder'), 'Daily entry notification', () => _openPanel(const ReminderPanel()), color: const Color(0xFFEA580C)),
             const Divider(height: 1),
+            _navTile(Icons.shield_outlined, tr('security'), tr('security_desc'), () => _openPanel(const SecurityPanel()), color: primary),
+            const Divider(height: 1),
             _navTile(Icons.lock_outline, tr('change_password'), 'Update account password', () async {
               await Navigator.push(context, slideInRoute(const ChangePasswordScreen()));
             }, color: primary),
@@ -218,39 +240,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 16),
 
           _sectionTitle(tr('previous_month_history'), primary),
-          _card(
-            _months.isEmpty
-                ? [Text(tr('no_saved_data'), style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)))]
-                : [
-                    ..._months.take(6).map((m) {
-                      final label = '${trMonthNames[m.month - 1].toUpperCase()} ${m.year}';
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
-                            ElevatedButton(
-                              onPressed: () => _loadMonth(m),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                minimumSize: Size.zero,
-                              ),
-                              child: Text(tr('load'), style: const TextStyle(fontSize: 12)),
-                            ),
-                          ],
+          _months.isEmpty
+              ? _card([Text(tr('no_saved_data'), style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)))])
+              : Column(
+                  children: [
+                    ..._months.take(4).map((m) => _historyCard(m, primary)),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await Navigator.push(context, slideInRoute(const DataHistoryScreen()));
+                        },
+                        icon: const Icon(Icons.history, size: 17),
+                        label: Text(tr('data_history')),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primary,
+                          side: BorderSide(color: primary.withOpacity(0.4)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      );
-                    }),
-                    TextButton(
-                      onPressed: () async {
-                        await Navigator.push(context, slideInRoute(const DataHistoryScreen()));
-                      },
-                      child: Text('${tr('data_history')} →'),
+                      ),
                     ),
                   ],
-          ),
+                ),
           const SizedBox(height: 16),
 
           _card([
@@ -270,6 +283,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  String _trimZero(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
+
+  /// Smart, card-style month history row — age plain "label + Load button"
+  /// list chilo, ekhon protyekta card-e month/year, mini stat chips
+  /// (OT/Night/Duty/Off), r ekta "View" button ache — DataHistoryScreen
+  /// er card-er sathe visually consistent.
+  Widget _historyCard(MonthSummary m, Color primary) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border(left: BorderSide(color: primary, width: 4)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _loadMonth(m),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: primary.withOpacity(0.12), borderRadius: BorderRadius.circular(11)),
+                child: Icon(Icons.calendar_month, color: primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${trMonthNames[m.month - 1]} ${m.year}',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _miniStat('OT ${_trimZero(m.otHours)}h', const Color(0xFF047857)),
+                        _miniStat('${tr('night')} ${m.night}', const Color(0xFF7C3AED)),
+                        _miniStat('${tr('duty')} ${m.duty}', const Color(0xFF0369A1)),
+                        _miniStat('${tr('day_off')} ${m.dayOff}', const Color(0xFFB91C1C)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(m.total.toStringAsFixed(0), style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: primary)),
+                  const SizedBox(height: 2),
+                  Icon(Icons.chevron_right, size: 18, color: primary.withOpacity(0.6)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _miniStat(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(color: color.withOpacity(0.10), borderRadius: BorderRadius.circular(6)),
+      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: color)),
     );
   }
 
@@ -559,6 +645,121 @@ class _RatesPanelState extends State<RatesPanel> {
           buildRateField(tr('night_rate'), _rateNightCtrl, onChanged: _markDirty),
           buildRateField(tr('off_rate'), _rateOFFCtrl, onChanged: _markDirty),
           buildRateField(tr('gross_rate'), _rateGrossCtrl, onChanged: _markDirty),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// Security panel — password-on-save/mark toggle
+// ---------------------------------------------------------------------
+class SecurityPanel extends StatefulWidget {
+  const SecurityPanel({super.key});
+  @override
+  State<SecurityPanel> createState() => _SecurityPanelState();
+}
+
+class _SecurityPanelState extends State<SecurityPanel> {
+  final _auth = AuthService();
+  final _settingsService = SettingsService();
+  AppSettings _settings = AppSettings();
+  bool _loading = true;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final s = await _settingsService.load();
+    if (!mounted) return;
+    setState(() {
+      _settings = s;
+      _loading = false;
+    });
+  }
+
+  void _markDirty() {
+    if (!_dirty) setState(() => _dirty = true);
+  }
+
+  /// Ei panel-er nijer save-o notun toggle mene chole: jodi user
+  /// password OFF korte chay, purono (still ON) state diye ekbar
+  /// verify kore nijeke ashsto kore, tarpor off hoy.
+  Future<void> _save() async {
+    final ctrl = TextEditingController();
+    bool ok = true;
+    if (_settings.requirePasswordOnSave) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('save_password_title')),
+          content: TextField(
+            controller: ctrl,
+            obscureText: true,
+            autofocus: true,
+            decoration: InputDecoration(labelText: tr('password'), border: const OutlineInputBorder()),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+      ok = await _auth.verifyPassword(ctrl.text);
+      if (!ok) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(tr('wrong_password')), backgroundColor: const Color(0xFFB91C1C)));
+        return;
+      }
+    } else {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('save_confirm_title_1')),
+          content: Text(tr('save_confirm_body_1')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    await _settingsService.save(_settings);
+    if (!mounted) return;
+    Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final primary = Theme.of(context).colorScheme.primary;
+    return PanelScaffold(
+      title: tr('security'),
+      dirty: _dirty,
+      onSave: _save,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(tr('require_password_save_desc'), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _settings.requirePasswordOnSave,
+            onChanged: (v) {
+              setState(() => _settings.requirePasswordOnSave = v);
+              _markDirty();
+            },
+            title: Text(tr('require_password_save'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            subtitle: Text(_settings.requirePasswordOnSave ? 'ON' : 'OFF', style: const TextStyle(fontSize: 11)),
+            activeColor: primary,
+          ),
         ],
       ),
     );

@@ -8,6 +8,11 @@ class AppSettings {
   int reminderHour; // 24hr format
   int reminderMinute;
 
+  /// Off thakle Settings-e "Save" ar Home-e mark/unmark korar shomoy
+  /// r password chaibe na — shudhu ekta shadharon Yes/No confirmation
+  /// dialog dekhabe. On thakle (default) age-r moto password lagbe.
+  bool requirePasswordOnSave;
+
   AppSettings({
     this.theme = 'purple',
     this.language = 'en',
@@ -15,6 +20,7 @@ class AppSettings {
     this.reminderEnabled = false,
     this.reminderHour = 21,
     this.reminderMinute = 0,
+    this.requirePasswordOnSave = true,
   });
 
   static const Map<String, String> currencySymbols = {
@@ -32,6 +38,7 @@ class AppSettings {
         'reminderEnabled': reminderEnabled,
         'reminderHour': reminderHour,
         'reminderMinute': reminderMinute,
+        'requirePasswordOnSave': requirePasswordOnSave,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -49,6 +56,7 @@ class AppSettings {
       reminderEnabled: json['reminderEnabled'] as bool? ?? false,
       reminderHour: (json['reminderHour'] as num?)?.toInt() ?? 21,
       reminderMinute: (json['reminderMinute'] as num?)?.toInt() ?? 0,
+      requirePasswordOnSave: json['requirePasswordOnSave'] as bool? ?? true,
     );
   }
 }
