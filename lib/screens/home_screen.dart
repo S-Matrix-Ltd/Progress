@@ -836,8 +836,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _colHeaderBox(String label) {
+    // Shob box-er height fix (44) rakha hoyeche — "OFF DAY DUTY" 2 line-e
+    // wrap hoy bole age oi box ta lomba hoye baki gula-r sathe onek elomelo
+    // dekhaতো, ekhon shobkoyta ek shoman height-e center-aligned thake.
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
+      height: 44,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.16),
         borderRadius: BorderRadius.circular(8),
@@ -848,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen> {
         maxLines: 2,
         softWrap: true,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, height: 1.15),
+        style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w900, height: 1.15),
       ),
     );
   }
