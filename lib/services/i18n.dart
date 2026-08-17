@@ -135,6 +135,10 @@ const Map<String, Map<String, String>> _kStrings = {
     'en': 'This can happen if your network blocks GitHub temporarily. You can still open the releases page directly to check manually.',
     'bn': 'নেটওয়ার্ক সাময়িকভাবে GitHub ব্লক করলে এমন হতে পারে। চাইলে সরাসরি রিলিজ পেজ খুলে ম্যানুয়ালি চেক করতে পারেন।'
   },
+  'update_check_dns_hint': {
+    'en': "Your phone couldn't resolve GitHub's address (a DNS issue). Try switching between WiFi and Mobile Data, or turn off any VPN, then try again.",
+    'bn': 'আপনার ফোন GitHub-এর ঠিকানা খুঁজে পায়নি (DNS সমস্যা)। WiFi ও Mobile Data বদলে দেখুন, অথবা কোনো VPN চালু থাকলে বন্ধ করে আবার চেষ্টা করুন।'
+  },
   'open_releases_page': {'en': 'Open Releases Page', 'bn': 'রিলিজ পেজ খুলুন'},
   'no_update_available': {'en': 'You are using the latest version.', 'bn': 'আপনি সর্বশেষ ভার্সন ব্যবহার করছেন।'},
   'update_available_title': {'en': 'Update Available', 'bn': 'নতুন আপডেট এসেছে'},

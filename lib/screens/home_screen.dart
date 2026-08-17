@@ -564,7 +564,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!result.success) {
       // Ekhon actual error (errorDetail) o choto kore dekhano hoy — jate
       // asol karon (rate-limit / timeout / DNS) bujha jay, shudhu ekta
-      // generic "check internet" bole na atke thake.
+      // generic "check internet" bole na atke thake. DNS lookup fail
+      // (jemon "Failed host lookup") holeo ekta specific, actionable
+      // hint dekhano hoy — WiFi/Mobile Data switch korte bola hoy.
+      final isDnsIssue = result.errorDetail.toLowerCase().contains('lookup') ||
+          result.errorDetail.toLowerCase().contains('socketexception');
       final openAnyway = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -573,7 +577,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(tr('update_check_failed_body')),
+              Text(isDnsIssue ? tr('update_check_dns_hint') : tr('update_check_failed_body')),
               if (result.errorDetail.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Text(result.errorDetail, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
@@ -736,42 +740,50 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(Icons.calendar_month, size: 18, color: opt.primary),
           const SizedBox(width: 10),
           Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
-          InkWell(
-            onTap: _openMonthYearWheelPicker,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFCBD5E1)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('${trMonthNames[month - 1]} $year', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.unfold_more, size: 16, color: Color(0xFF64748B)),
-                ],
-              ),
-            ),
-          ),
+          // Month ar Year ekhon dutो alada compact chip — protyekta
+          // click korle nijer chhoto (shudhu ekta wheel) picker khole.
+          _miniPickChip(trMonthNames[month - 1], () => _openSingleWheelPicker(isMonth: true)),
+          const SizedBox(width: 6),
+          _miniPickChip('$year', () => _openSingleWheelPicker(isMonth: false)),
         ],
       ),
     );
   }
 
-  /// Wheel-style (iOS date-picker moto) month/year select — scroll kore
-  /// select korte hoy, tarpor "Confirm" e chaple apply hoy.
-  Future<void> _openMonthYearWheelPicker() async {
+  Widget _miniPickChip(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+            const SizedBox(width: 3),
+            const Icon(Icons.unfold_more, size: 14, color: Color(0xFF64748B)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Compact, single-wheel (shudhu Month, ba shudhu Year) bottom sheet.
+  /// `isMonth` onujayi kon wheel dekhabe seta thik hoy.
+  Future<void> _openSingleWheelPicker({required bool isMonth}) async {
     if (!(await _confirmDiscardIfDirty())) return;
     final opt = themeOptionFor(themeNotifier.value);
-    int tempMonthIdx = month - 1;
     final years = List.generate(21, (i) => DateTime.now().year - 10 + i);
-    int tempYearIdx = years.indexOf(year);
-    if (tempYearIdx < 0) tempYearIdx = years.indexOf(DateTime.now().year);
+    int tempIdx = isMonth ? month - 1 : years.indexOf(year);
+    if (!isMonth && tempIdx < 0) tempIdx = years.indexOf(DateTime.now().year);
+    final items = isMonth ? trMonthNames : years.map((y) => '$y').toList();
 
-    final result = await showModalBottomSheet<Map<String, int>>(
+    final resultIdx = await showModalBottomSheet<int>(
       context: context,
       backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
@@ -784,41 +796,26 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 14),
-                Text(tr('month_year'), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: opt.primary)),
+                Text(isMonth ? tr('col_date') : tr('month_year'),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: opt.primary)),
                 SizedBox(
-                  height: 190,
+                  height: 170,
                   child: Stack(
                     children: [
                       Center(
                         child: Container(
                           height: 42,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          margin: const EdgeInsets.symmetric(horizontal: 40),
                           decoration: BoxDecoration(color: opt.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CupertinoPicker(
-                              scrollController: FixedExtentScrollController(initialItem: tempMonthIdx),
-                              itemExtent: 42,
-                              onSelectedItemChanged: (i) => tempMonthIdx = i,
-                              children: trMonthNames
-                                  .map((m) => Center(child: Text(m, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))))
-                                  .toList(),
-                            ),
-                          ),
-                          Expanded(
-                            child: CupertinoPicker(
-                              scrollController: FixedExtentScrollController(initialItem: tempYearIdx),
-                              itemExtent: 42,
-                              onSelectedItemChanged: (i) => tempYearIdx = i,
-                              children: years
-                                  .map((y) => Center(child: Text('$y', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))))
-                                  .toList(),
-                            ),
-                          ),
-                        ],
+                      CupertinoPicker(
+                        scrollController: FixedExtentScrollController(initialItem: tempIdx),
+                        itemExtent: 42,
+                        onSelectedItemChanged: (i) => tempIdx = i,
+                        children: items
+                            .map((v) => Center(child: Text(v, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -827,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx, {'month': tempMonthIdx + 1, 'year': years[tempYearIdx]}),
+                    onPressed: () => Navigator.pop(ctx, tempIdx),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: opt.primary,
                       foregroundColor: Colors.white,
@@ -844,10 +841,13 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
 
-    if (result == null || !mounted) return;
+    if (resultIdx == null || !mounted) return;
     setState(() {
-      month = result['month']!;
-      year = result['year']!;
+      if (isMonth) {
+        month = resultIdx + 1;
+      } else {
+        year = years[resultIdx];
+      }
       _dirty = false;
     });
     _loadMonth();
