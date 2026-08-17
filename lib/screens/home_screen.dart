@@ -95,12 +95,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _autoCheckUpdateSilently();
   }
 
-  /// App khulleyi background-e update check kore (throttle nei — protibar
-  /// app khule একবার কতে, jate "automatic" feature ta ashole kaj kore).
-  /// Fail hole (network/DNS issue etc.) UI-te kono error dekhano hoy na —
-  /// chup chap ignore kore, karon eta automatic background check, user
-  /// kono button chapeni. Update paoa gele shudhu tokhon ekta dialog dekhay.
+  /// App khulleyi background-e update check kore. Halka throttle (30 min)
+  /// ache — GitHub API rate-limit (60 req/hour per IP) e jate na lage,
+  /// nahole baar baar app open/close korle "Could Not Check" dekhabe.
+  /// Manual "Check for Updates" button-e kono throttle nei — shobshomoy
+  /// fresh check hoy. Fail hole (network/DNS issue etc.) UI-te kono error
+  /// dekhano hoy na — chup chap ignore kore. Update paoa gele shudhu
+  /// tokhon ekta dialog dekhay.
+  static DateTime? _lastAutoCheck;
+
   Future<void> _autoCheckUpdateSilently() async {
+    final last = _lastAutoCheck;
+    if (last != null && DateTime.now().difference(last) < const Duration(minutes: 30)) return;
+    _lastAutoCheck = DateTime.now();
     try {
       final result = await _updateService.checkForUpdate(kAppVersion);
       if (!result.success || !result.hasUpdate) return; // chup chap ignore
@@ -555,13 +562,24 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
 
     if (!result.success) {
-      // Raw exception ar dekhano hocche na — user-friendly message,
-      // r chaile shorasori releases page open korার fallback option.
+      // Ekhon actual error (errorDetail) o choto kore dekhano hoy — jate
+      // asol karon (rate-limit / timeout / DNS) bujha jay, shudhu ekta
+      // generic "check internet" bole na atke thake.
       final openAnyway = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(tr('update_check_failed_title')),
-          content: Text(tr('update_check_failed_body')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(tr('update_check_failed_body')),
+              if (result.errorDetail.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(result.errorDetail, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+              ],
+            ],
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
             TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('open_releases_page'))),
