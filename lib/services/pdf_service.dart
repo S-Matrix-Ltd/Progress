@@ -79,7 +79,7 @@ class PdfService {
             ),
             pw.SizedBox(height: 2),
             pw.Center(
-              child: pw.Text('Developed by S Matrix Ltd.',
+              child: pw.Text('Developed By S Matrix Ltd.',
                   style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.black)),
             ),
             pw.SizedBox(height: 2),
@@ -181,9 +181,15 @@ class PdfService {
           final dateLabel =
               '${d.toString().padLeft(2, '0')}.${month.toString().padLeft(2, '0')}.$year (${_kWeekdayShort[wd % 7]})';
           final e = days[i];
+          // OT(H) column-er notun rule:
+          //  - Off Day (pura rest, kono kaj nei) hole ekdom blank thakbe
+          //  - Baki shob khetre (duty/night thaka shotteo OT na kora shoho)
+          //    OT=0 hole "-" dekhabe, "0" na — jate spreadsheet-er moto
+          //    "0" gula chokhe khoche na pore.
+          final otLabel = e.hasDayoff ? '' : (e.ot == 0 ? '-' : _num(e.ot));
           return pw.TableRow(children: [
             _cell(dateLabel, fontSize: 8.5),
-            _cell(_num(e.ot), center: true, fontSize: 8.5, shiftLeft: true),
+            _cell(otLabel, center: true, fontSize: 8.5, shiftLeft: true),
             _cell(e.hasNight ? 'Y' : '', center: true, fontSize: 8.5),
             _cell(e.hasDuty ? 'Y' : '', center: true, fontSize: 8.5),
             _cell(e.hasDayoff ? 'Y' : '', center: true, fontSize: 8.5),
