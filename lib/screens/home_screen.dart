@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -740,21 +739,23 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(Icons.calendar_month, size: 18, color: opt.primary),
           const SizedBox(width: 10),
           Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
-          // Month ar Year ekhon dutो alada compact chip — protyekta
-          // click korle nijer chhoto (shudhu ekta wheel) picker khole.
-          _miniPickChip(trMonthNames[month - 1], () => _openSingleWheelPicker(isMonth: true)),
+          // Month ar Year — protyekta chip-er thik nichei (dropdown-er
+          // moto) ekta scrollable list slide-down hoy, alada bottom-sheet
+          // hishebe pura screen theke khole na.
+          _miniPickChip(_monthChipKey, trMonthNames[month - 1], () => _openAnchoredDropdown(isMonth: true)),
           const SizedBox(width: 6),
-          _miniPickChip('$year', () => _openSingleWheelPicker(isMonth: false)),
+          _miniPickChip(_yearChipKey, '$year', () => _openAnchoredDropdown(isMonth: false)),
         ],
       ),
     );
   }
 
-  Widget _miniPickChip(String label, VoidCallback onTap) {
+  Widget _miniPickChip(GlobalKey key, String label, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
+        key: key,
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -773,80 +774,59 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Compact, single-wheel (shudhu Month, ba shudhu Year) bottom sheet.
-  /// `isMonth` onujayi kon wheel dekhabe seta thik hoy.
-  Future<void> _openSingleWheelPicker({required bool isMonth}) async {
-    if (!(await _confirmDiscardIfDirty())) return;
-    final opt = themeOptionFor(themeNotifier.value);
-    final years = List.generate(21, (i) => DateTime.now().year - 10 + i);
-    int tempIdx = isMonth ? month - 1 : years.indexOf(year);
-    if (!isMonth && tempIdx < 0) tempIdx = years.indexOf(DateTime.now().year);
-    final items = isMonth ? trMonthNames : years.map((y) => '$y').toList();
+  final GlobalKey _monthChipKey = GlobalKey();
+  final GlobalKey _yearChipKey = GlobalKey();
 
-    final resultIdx = await showModalBottomSheet<int>(
+  /// Chip-ta thik jekhane ache, ঠিক oi jaygaর niche theke (dropdown-er
+  /// moto) ekta scrollable, compact list slide-down hoye khole — full
+  /// bottom-sheet na, showMenu diye chip-er "anchor position" theke
+  /// suru hoy.
+  Future<void> _openAnchoredDropdown({required bool isMonth}) async {
+    if (!(await _confirmDiscardIfDirty())) return;
+    final key = isMonth ? _monthChipKey : _yearChipKey;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !mounted) return;
+    final offset = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final screenSize = MediaQuery.of(context).size;
+
+    final years = List.generate(21, (i) => DateTime.now().year - 10 + i);
+    final items = isMonth ? trMonthNames : years.map((y) => '$y').toList();
+    final currentIdx = isMonth ? month - 1 : years.indexOf(year);
+    final opt = themeOptionFor(themeNotifier.value);
+
+    final selectedIdx = await showMenu<int>(
       context: context,
-      backgroundColor: Theme.of(context).cardColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 14),
-                Text(isMonth ? tr('col_date') : tr('month_year'),
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: opt.primary)),
-                SizedBox(
-                  height: 170,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Container(
-                          height: 42,
-                          margin: const EdgeInsets.symmetric(horizontal: 40),
-                          decoration: BoxDecoration(color: opt.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                      CupertinoPicker(
-                        scrollController: FixedExtentScrollController(initialItem: tempIdx),
-                        itemExtent: 42,
-                        onSelectedItemChanged: (i) => tempIdx = i,
-                        children: items
-                            .map((v) => Center(child: Text(v, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))))
-                            .toList(),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx, tempIdx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: opt.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Text(tr('confirm')),
-                  ),
-                ),
-              ],
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + size.height + 4,
+        screenSize.width - offset.dx - size.width,
+        0,
+      ),
+      constraints: const BoxConstraints(maxHeight: 260, minWidth: 130),
+      items: List.generate(items.length, (i) {
+        final selected = i == currentIdx;
+        return PopupMenuItem<int>(
+          value: i,
+          height: 38,
+          child: Text(
+            items[i],
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              color: selected ? opt.primary : const Color(0xFF334155),
             ),
           ),
         );
-      },
+      }),
     );
 
-    if (resultIdx == null || !mounted) return;
+    if (selectedIdx == null || !mounted) return;
     setState(() {
       if (isMonth) {
-        month = resultIdx + 1;
+        month = selectedIdx + 1;
       } else {
-        year = years[resultIdx];
+        year = years[selectedIdx];
       }
       _dirty = false;
     });
