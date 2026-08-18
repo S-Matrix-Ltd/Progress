@@ -825,20 +825,42 @@ class _ReminderPanelState extends State<ReminderPanel> {
         return;
       }
       // Exact Alarm (Android 12+) permission — ei ta na thakle notification
-      // thik shomoy-e ashbe na (Doze mode-e deri hoye jete pare). Ei call
-      // shorasori OS-er Settings screen khole dey, user shekhane ekta
-      // toggle ON korben.
+      // thik shomoy-e ashbe na. Ei call shorasori OS-er Settings screen
+      // khole dey, user shekhane ekta toggle ON korben. Eta ekta "fire and
+      // forget" intent — return howar por-e amra abar check kore dekhi
+      // (canScheduleExact) actual obostha ki.
       await ReminderService.requestExactAlarmPermission();
-      await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
+      final mode = await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
       if (!mounted) return;
+      if (mode == 'failed') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('reminder_schedule_failed')), backgroundColor: const Color(0xFFB91C1C)),
+        );
+        return;
+      }
+      final canExact = await ReminderService.canScheduleExact();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('reminder_scheduled_msg')), backgroundColor: const Color(0xFF047857)),
+        SnackBar(
+          content: Text(canExact ? tr('reminder_scheduled_msg') : tr('reminder_scheduled_inexact_msg')),
+          backgroundColor: canExact ? const Color(0xFF047857) : const Color(0xFFB45309),
+        ),
       );
     } else {
       await ReminderService.cancel();
     }
     if (!mounted) return;
     Navigator.pop(context, true);
+  }
+
+  Future<void> _sendTest() async {
+    final ok = await ReminderService.showTestNotification();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? tr('test_notification_sent') : tr('test_notification_failed')),
+        backgroundColor: ok ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+      ),
+    );
   }
 
   @override
@@ -884,6 +906,24 @@ class _ReminderPanelState extends State<ReminderPanel> {
                 ),
               ),
             ),
+          const SizedBox(height: 12),
+          // Test button — akhoni ekta notification pathiye dekha jay
+          // device-e notification dekhano-i thik moto kaj kore kina,
+          // scheduling-er upor nirbhor na kore.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _sendTest,
+              icon: const Icon(Icons.notifications_active_outlined, size: 17),
+              label: Text(tr('send_test_notification')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: primary,
+                side: BorderSide(color: primary.withOpacity(0.4)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
         ],
       ),
     );

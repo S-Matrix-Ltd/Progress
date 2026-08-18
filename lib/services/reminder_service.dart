@@ -5,21 +5,13 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 
 /// Prottidin thik shomoy-e ekta "Duty entry din" reminder pathay.
 ///
-/// AGE ei service 'inexactAllowWhileIdle' mode use korto — mane Android
-/// battery-optimizer (biশেষ kore Xiaomi/Oppo/Vivo/Realme-er moto phone-e,
-/// jegula Bangladesh-e onek popular) ei notification ke Doze mode-e onek
-/// deri kore dito, ba shomponno suppress-o kore dito. Tai user-er kache
-/// mone hoto "reminder kaj kore na".
-///
-/// EKHON 'AndroidScheduleMode.alarmClock' use kora hocche — eta thik
-/// shei-i API (AlarmManager.setAlarmClock) jeta আসল Alarm/Clock app
-/// use kore. Ei mode-e:
-///  - Notification ekdom EXACT shomoy-e baje, Doze mode-eo deri hoy na
-///  - Status bar-e ekta chhoto alarm-icon dekhay (jemon real alarm app-e hoy)
-///  - Kintu Android 12+ e ei exact-alarm chalanor jonne user-ke ekta
-///    আলাদা "Alarms & reminders" permission Settings-e giye ON korte hoy —
-///    tai ei service-e ekta requestExactAlarmPermission() method ache
-///    jeta shei Settings screen ta shorasori open kore dey.
+/// 'alarmClock' mode (AlarmManager.setAlarmClock) — asol Alarm app jei
+/// API use kore — try kora hoy prothome, jate Doze mode-eo thik
+/// shomoy-e baje. Kintu ei mode-er jonne "Alarms & reminders" (Exact
+/// Alarm) permission lage (Android 12+). Kono karone (permission na
+/// deya, device restriction) exact scheduling fail korle, ei service
+/// nijer theke kom-precision mode-e "fallback" kore — tai reminder
+/// EKDOM silently fail kore na, kono na kono vabe abossoi schedule hoy.
 class ReminderService {
   static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
@@ -50,51 +42,117 @@ class ReminderService {
     return granted ?? false;
   }
 
-  /// "Alarms & reminders" (Exact Alarm) permission — Android 12+ e ei
-  /// permission na thakle alarm-clock-grade exact timing kaj korbe na.
-  /// Ei method Android-er nijer Settings screen open kore dey jekhane
-  /// user ekta toggle ON korte parben. Purono Android (12-er niche) e
-  /// eta lagei na — automatically true return kore.
-  static Future<bool> requestExactAlarmPermission() async {
+  /// Ei muhurte notification dekhanor permission ache kina — shudhu
+  /// check kore, notun kore chay na.
+  static Future<bool> notificationsAllowed() async {
     await init();
     final androidImpl = _android;
     if (androidImpl == null) return true;
     try {
-      final granted = await androidImpl.requestExactAlarmsPermission();
-      return granted ?? true;
+      final enabled = await androidImpl.areNotificationsEnabled();
+      return enabled ?? true;
     } catch (_) {
-      // Plugin/OS version ei API support na korle (purono Android),
-      // exact alarm-e restriction-i thake na — tai true.
       return true;
     }
   }
 
-  static Future<void> scheduleDaily(TimeOfDay time) async {
+  /// "Alarms & reminders" (Exact Alarm) permission — Android 12+ e ei
+  /// permission na thakle exact timing kaj korbe na. Ei method Android-er
+  /// nijer Settings screen open kore dey jekhane user ekta toggle ON
+  /// korte parben.
+  static Future<void> requestExactAlarmPermission() async {
     await init();
-    // Age ekbar schedule kora thakle prothome cancel kore notun kore
-    // schedule kora hocche — nahole purono shomoy-er shathe notunta
-    // duita-i thakte pare.
+    final androidImpl = _android;
+    if (androidImpl == null) return;
+    try {
+      await androidImpl.requestExactAlarmsPermission();
+    } catch (_) {
+      // Plugin/OS version ei API support na korle (purono Android),
+      // eta lagei na.
+    }
+  }
+
+  /// Exact alarm permission ei muhurte ache kina check kore.
+  static Future<bool> canScheduleExact() async {
+    await init();
+    final androidImpl = _android;
+    if (androidImpl == null) return true;
+    try {
+      final can = await androidImpl.canScheduleExactNotifications();
+      return can ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Reminder schedule kore, precision fallback shoho:
+  /// alarmClock -> exactAllowWhileIdle -> inexactAllowWhileIdle.
+  /// Return kore je mode-e ashole schedule hoyeche seta.
+  static Future<String> scheduleDaily(TimeOfDay time) async {
+    await init();
     await _plugin.cancel(100);
-    await _plugin.zonedSchedule(
-      100,
-      'Duty & OT Entry',
-      "Ajker duty/OT entry ta din — bhule jaben na!",
-      _nextInstanceOf(time),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily-entry-reminder',
-          'Daily Entry Reminder',
-          channelDescription: 'Ajker duty entry deyar reminder',
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.alarm,
-          fullScreenIntent: true,
+
+    const modes = [
+      AndroidScheduleMode.alarmClock,
+      AndroidScheduleMode.exactAllowWhileIdle,
+      AndroidScheduleMode.inexactAllowWhileIdle,
+    ];
+
+    for (final mode in modes) {
+      try {
+        await _plugin.zonedSchedule(
+          100,
+          'Duty & OT Entry',
+          "Ajker duty/OT entry ta din — bhule jaben na!",
+          _nextInstanceOf(time),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'daily-entry-reminder',
+              'Daily Entry Reminder',
+              channelDescription: 'Ajker duty entry deyar reminder',
+              importance: Importance.max,
+              priority: Priority.high,
+              category: AndroidNotificationCategory.alarm,
+              fullScreenIntent: true,
+            ),
+          ),
+          androidScheduleMode: mode,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+        return mode.toString(); // success — ei mode-e schedule hoyeche
+      } catch (_) {
+        // Ei mode fail korle porerta try kora hoy.
+        continue;
+      }
+    }
+    return 'failed';
+  }
+
+  /// Ekdom akhoni ekta test notification pathay (kono schedule chara) —
+  /// jate bujha jay device-e notification dekhano-i kaj kore kina, ta
+  /// scheduling-er shomossha theke alada kore.
+  static Future<bool> showTestNotification() async {
+    await init();
+    try {
+      await _plugin.show(
+        999,
+        'Test Notification',
+        'Eta thik moto ashle, notification system kaj kortese.',
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily-entry-reminder',
+            'Daily Entry Reminder',
+            channelDescription: 'Ajker duty entry deyar reminder',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.alarmClock,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> cancel() async {

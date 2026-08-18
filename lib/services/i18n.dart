@@ -54,6 +54,14 @@ const Map<String, Map<String, String>> _kStrings = {
     'bn': 'এটা আসল অ্যালার্মের মতো কাজ করে — সঠিক সময়ে পাওয়ার জন্য "Alarms & reminders" পারমিশন চাইলে অনুমতি দিন।'
   },
   'reminder_scheduled_msg': {'en': 'Daily reminder set successfully', 'bn': 'ডেইলি রিমাইন্ডার সেট হয়েছে'},
+  'reminder_scheduled_inexact_msg': {
+    'en': 'Reminder set, but exact-time delivery is off for this app. Enable "Alarms & reminders" in phone Settings for precise timing.',
+    'bn': 'রিমাইন্ডার সেট হয়েছে, তবে সঠিক সময়ে পাওয়া এই অ্যাপের জন্য বন্ধ আছে। সঠিক সময়ে পেতে ফোনের Settings এ "Alarms & reminders" চালু করুন।'
+  },
+  'reminder_schedule_failed': {'en': 'Could not set reminder on this device', 'bn': 'এই ডিভাইসে রিমাইন্ডার সেট করা যায়নি'},
+  'send_test_notification': {'en': 'Send Test Notification Now', 'bn': 'এখনই টেস্ট নোটিফিকেশন পাঠান'},
+  'test_notification_sent': {'en': 'Test notification sent — check your notification panel', 'bn': 'টেস্ট নোটিফিকেশন পাঠানো হয়েছে — নোটিফিকেশন প্যানেল দেখুন'},
+  'test_notification_failed': {'en': 'Could not send test notification', 'bn': 'টেস্ট নোটিফিকেশন পাঠানো যায়নি'},
   'reminder_time': {'en': 'Reminder Time', 'bn': 'রিমাইন্ডার সময়'},
   'calculator': {'en': 'Calculator', 'bn': 'ক্যালকুলেটর'},
   'open_calculator': {'en': 'Open Calculator', 'bn': 'ক্যালকুলেটর খুলুন'},
