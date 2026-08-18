@@ -49,6 +49,11 @@ const Map<String, Map<String, String>> _kStrings = {
   'language': {'en': 'Language', 'bn': 'ভাষা'},
   'daily_reminder': {'en': 'Daily Entry Reminder', 'bn': 'দৈনিক এন্ট্রি রিমাইন্ডার'},
   'reminder_desc': {'en': 'Get a daily notification to fill today\'s entry', 'bn': 'প্রতিদিনের এন্ট্রি দেওয়ার জন্য নোটিফিকেশন পাবেন'},
+  'reminder_alarm_hint': {
+    'en': 'Works like a real alarm — you may need to allow "Alarms & reminders" when asked, for exact-time delivery.',
+    'bn': 'এটা আসল অ্যালার্মের মতো কাজ করে — সঠিক সময়ে পাওয়ার জন্য "Alarms & reminders" পারমিশন চাইলে অনুমতি দিন।'
+  },
+  'reminder_scheduled_msg': {'en': 'Daily reminder set successfully', 'bn': 'ডেইলি রিমাইন্ডার সেট হয়েছে'},
   'reminder_time': {'en': 'Reminder Time', 'bn': 'রিমাইন্ডার সময়'},
   'calculator': {'en': 'Calculator', 'bn': 'ক্যালকুলেটর'},
   'open_calculator': {'en': 'Open Calculator', 'bn': 'ক্যালকুলেটর খুলুন'},

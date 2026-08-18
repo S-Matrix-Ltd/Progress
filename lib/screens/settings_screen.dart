@@ -824,7 +824,16 @@ class _ReminderPanelState extends State<ReminderPanel> {
         );
         return;
       }
+      // Exact Alarm (Android 12+) permission — ei ta na thakle notification
+      // thik shomoy-e ashbe na (Doze mode-e deri hoye jete pare). Ei call
+      // shorasori OS-er Settings screen khole dey, user shekhane ekta
+      // toggle ON korben.
+      await ReminderService.requestExactAlarmPermission();
       await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('reminder_scheduled_msg')), backgroundColor: const Color(0xFF047857)),
+      );
     } else {
       await ReminderService.cancel();
     }
@@ -844,6 +853,8 @@ class _ReminderPanelState extends State<ReminderPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(tr('reminder_desc'), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+          const SizedBox(height: 4),
+          Text(tr('reminder_alarm_hint'), style: TextStyle(fontSize: 10.5, color: primary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

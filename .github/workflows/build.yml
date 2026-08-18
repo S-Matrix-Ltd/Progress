@@ -26,7 +26,7 @@ jobs:
         run: |
           sed -i 's#</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
 
-      - name: Add INTERNET + notification permissions to manifest
+      - name: Add INTERNET + notification + exact-alarm permissions to manifest
         run: |
           # Flutter-er default generated RELEASE manifest-e INTERNET
           # permission thake na (shudhu debug build-e auto add hoy) —
@@ -34,7 +34,16 @@ jobs:
           # call silently fail kore "check your internet" dekhay, joto-i
           # internet thak na kno. </manifest>-er age reliable-bhabe
           # insert kora hocche (kono existing line-er upor depend kore na).
-          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          #
+          # SCHEDULE_EXACT_ALARM + USE_EXACT_ALARM: Daily Reminder-ke
+          # ekdom "Alarm Clock"-er moto EXACT shomoy-e (Doze mode-eo)
+          # baja-nor jonne lage.
+          # RECEIVE_BOOT_COMPLETED: Phone restart hole-o reminder abar
+          # auto-reschedule hoy, otherwise restart-er por miss hoye jeto.
+          # USE_FULL_SCREEN_INTENT + WAKE_LOCK: notification-ta jate
+          # screen-off obosthay-o phone-ke jagiye dekhay, ekdom alarm-er
+          # moto.
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
           cat android/app/src/main/AndroidManifest.xml
 
       - name: Decode release keystore
