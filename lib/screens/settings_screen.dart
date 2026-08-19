@@ -773,11 +773,19 @@ class _ReminderPanelState extends State<ReminderPanel> {
   AppSettings _settings = AppSettings();
   bool _loading = true;
   bool _dirty = false;
+  bool? _exactAlarmGranted;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _refreshPermissionStatus();
+  }
+
+  Future<void> _refreshPermissionStatus() async {
+    final can = await ReminderService.canScheduleExact();
+    if (!mounted) return;
+    setState(() => _exactAlarmGranted = can);
   }
 
   Future<void> _load() async {
@@ -837,6 +845,7 @@ class _ReminderPanelState extends State<ReminderPanel> {
       // scheduled ta ashe na — thik ei problem-tai report kora hoyeche.
       await ReminderService.requestIgnoreBatteryOptimizations();
       final mode = await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
+      await _refreshPermissionStatus();
       if (!mounted) return;
       if (mode == 'failed') {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -869,6 +878,25 @@ class _ReminderPanelState extends State<ReminderPanel> {
     );
   }
 
+  /// Diagnostic test — daily-repeat er jotilota bad diye, shudhu 1
+  /// minute pore ekta notification schedule kore. User-ke app CLOSE
+  /// kore wait korte bola hoy — eta diye background scheduling ashole
+  /// kaj kore kina shorasori bujha jay.
+  Future<void> _scheduleOneMinuteTest() async {
+    await ReminderService.requestPermission();
+    await ReminderService.requestExactAlarmPermission();
+    await ReminderService.requestIgnoreBatteryOptimizations();
+    final mode = await ReminderService.scheduleOneTimeTest(const Duration(minutes: 1));
+    await _refreshPermissionStatus();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mode == 'failed' ? tr('test_notification_failed') : tr('one_min_test_scheduled')),
+        backgroundColor: mode == 'failed' ? const Color(0xFFB91C1C) : const Color(0xFF047857),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -883,6 +911,34 @@ class _ReminderPanelState extends State<ReminderPanel> {
           Text(tr('reminder_desc'), style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
           const SizedBox(height: 4),
           Text(tr('reminder_alarm_hint'), style: TextStyle(fontSize: 10.5, color: primary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          // Exact Alarm permission-er live status — custom ROM-e ei
+          // permission thakleo/na thakleo device-visor-e alada rokom
+          // behave korte pare, tai shorasori dekhano hoy.
+          if (_exactAlarmGranted != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: (_exactAlarmGranted! ? const Color(0xFF047857) : const Color(0xFFB45309)).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(_exactAlarmGranted! ? Icons.check_circle : Icons.warning_amber_rounded,
+                      size: 15, color: _exactAlarmGranted! ? const Color(0xFF047857) : const Color(0xFFB45309)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _exactAlarmGranted! ? tr('exact_alarm_granted') : tr('exact_alarm_not_granted'),
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _exactAlarmGranted! ? const Color(0xFF047857) : const Color(0xFFB45309)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 10),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -925,6 +981,24 @@ class _ReminderPanelState extends State<ReminderPanel> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: primary,
                 side: BorderSide(color: primary.withOpacity(0.4)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Diagnostic test — daily-repeat er jotilota chara shudhu 1
+          // minute pore ekta notification ashe kina check kore. Ei
+          // button chaপার por app minimize/close kore wait korte hobe.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _scheduleOneMinuteTest,
+              icon: const Icon(Icons.timer_outlined, size: 17),
+              label: Text(tr('schedule_one_min_test')),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFB45309),
+                side: const BorderSide(color: Color(0xFFB45309)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),

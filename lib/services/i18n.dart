@@ -67,6 +67,10 @@ const Map<String, Map<String, String>> _kStrings = {
     'en': 'If the reminder still doesn\'t arrive on time, open Battery settings above and choose "No restriction" / "Unrestricted" for this app. On some phones (Xiaomi, Oppo, Vivo), also turn on "Autostart" for this app in phone Settings.',
     'bn': 'রিমাইন্ডার তবেও সময়মতো না এলে, উপরের Battery Settings খুলে এই অ্যাপের জন্য "No restriction"/"Unrestricted" বেছে নিন। কিছু ফোনে (Xiaomi, Oppo, Vivo) ফোনের Settings এ এই অ্যাপের "Autostart"-ও চালু করুন।'
   },
+  'exact_alarm_granted': {'en': 'Exact alarm permission: Granted', 'bn': 'এক্সাক্ট অ্যালার্ম পারমিশন: দেওয়া আছে'},
+  'exact_alarm_not_granted': {'en': 'Exact alarm permission: NOT granted — reminder may be delayed', 'bn': 'এক্সাক্ট অ্যালার্ম পারমিশন: দেওয়া নেই — রিমাইন্ডার দেরি হতে পারে'},
+  'schedule_one_min_test': {'en': 'Schedule Test in 1 Minute (then close app)', 'bn': '১ মিনিট পরের জন্য টেস্ট সেট করুন (তারপর অ্যাপ বন্ধ করুন)'},
+  'one_min_test_scheduled': {'en': '1-minute test set. Now close the app completely and wait.', 'bn': '১ মিনিটের টেস্ট সেট হয়েছে। এখন অ্যাপটি পুরোপুরি বন্ধ করে অপেক্ষা করুন।'},
   'reminder_time': {'en': 'Reminder Time', 'bn': 'রিমাইন্ডার সময়'},
   'calculator': {'en': 'Calculator', 'bn': 'ক্যালকুলেটর'},
   'open_calculator': {'en': 'Open Calculator', 'bn': 'ক্যালকুলেটর খুলুন'},

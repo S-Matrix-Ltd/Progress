@@ -115,6 +115,48 @@ class ReminderService {
   /// Reminder schedule kore, precision fallback shoho:
   /// alarmClock -> exactAllowWhileIdle -> inexactAllowWhileIdle.
   /// Return kore je mode-e ashole schedule hoyeche seta.
+  /// Diagnostic/test: daily-repeat-er jotil matchDateTimeComponents logic
+  /// bad diye, shudhu ekta ONE-TIME notification 'delay' poriman shomoy
+  /// pore schedule kore. Eta diye bujha jay je alarmClock-based scheduling
+  /// ashole kaj kore kina — daily-repeat-er kono jotilota chara.
+  static Future<String> scheduleOneTimeTest(Duration delay) async {
+    await init();
+    await _plugin.cancel(998);
+    final fireTime = tz.TZDateTime.now(tz.local).add(delay);
+    const modes = [
+      AndroidScheduleMode.alarmClock,
+      AndroidScheduleMode.exactAllowWhileIdle,
+      AndroidScheduleMode.inexactAllowWhileIdle,
+    ];
+    for (final mode in modes) {
+      try {
+        await _plugin.zonedSchedule(
+          998,
+          'Test Alarm',
+          'Eta ashle, background scheduling thik moto kaj kortese ($mode).',
+          fireTime,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'daily-entry-reminder',
+              'Daily Entry Reminder',
+              channelDescription: 'Ajker duty entry deyar reminder',
+              importance: Importance.max,
+              priority: Priority.high,
+              category: AndroidNotificationCategory.alarm,
+              fullScreenIntent: true,
+            ),
+          ),
+          androidScheduleMode: mode,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        );
+        return mode.toString();
+      } catch (_) {
+        continue;
+      }
+    }
+    return 'failed';
+  }
+
   static Future<String> scheduleDaily(TimeOfDay time) async {
     await init();
     await _plugin.cancel(100);
