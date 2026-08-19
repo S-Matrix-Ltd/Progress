@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import '../main.dart';
 import '../models/app_settings.dart';
 import '../models/day_entry.dart';
@@ -830,6 +831,11 @@ class _ReminderPanelState extends State<ReminderPanel> {
       // forget" intent — return howar por-e amra abar check kore dekhi
       // (canScheduleExact) actual obostha ki.
       await ReminderService.requestExactAlarmPermission();
+      // Battery optimization exemption-o chaই — Xiaomi/Oppo/Vivo-er moto
+      // phone-e eta na thakle scheduled reminder background-e ashe na,
+      // eta na hole test notification (akhoni show) thik ashe kintu
+      // scheduled ta ashe na — thik ei problem-tai report kora hoyeche.
+      await ReminderService.requestIgnoreBatteryOptimizations();
       final mode = await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
       if (!mounted) return;
       if (mode == 'failed') {
@@ -924,6 +930,24 @@ class _ReminderPanelState extends State<ReminderPanel> {
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          // Battery settings-e shorasori niye jay — jate user manually
+          // "No restriction"/"Unrestricted" select korte paren. Onek
+          // OEM-e (Xiaomi/Oppo/Vivo) ei manual step chara automatic
+          // request-o kaj kore na.
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: () async {
+                await openAppSettings();
+              },
+              icon: const Icon(Icons.battery_saver_outlined, size: 16),
+              label: Text(tr('open_battery_settings'), style: const TextStyle(fontSize: 11.5)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(tr('battery_optimization_hint'),
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
         ],
       ),
     );

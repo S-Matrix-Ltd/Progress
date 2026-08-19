@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tzdata;
 
@@ -80,6 +81,32 @@ class ReminderService {
     try {
       final can = await androidImpl.canScheduleExactNotifications();
       return can ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Onek phone-e (Xiaomi/Oppo/Vivo/Realme etc) OS-er nijer "Battery
+  /// Saver"/"Autostart" restriction thake, jeta AlarmManager-er exact
+  /// permission thakleo background-e app-ke jagte deয় na — tai notification
+  /// akhoni test korle ashe kintu scheduled shomoy-e ashe na. Ei permission
+  /// (Ignore Battery Optimizations) chaile onek khetreই eta thik hoye jay.
+  /// Play Store chara sideload kora app-e eta OS "special access" list-e
+  /// nite lage, tai ekta system dialog dekhabe user-ke.
+  static Future<void> requestIgnoreBatteryOptimizations() async {
+    try {
+      final status = await Permission.ignoreBatteryOptimizations.status;
+      if (!status.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    } catch (_) {
+      // Android chara onno platform-e ei permission-i thake na.
+    }
+  }
+
+  static Future<bool> isIgnoringBatteryOptimizations() async {
+    try {
+      return await Permission.ignoreBatteryOptimizations.status.then((s) => s.isGranted);
     } catch (_) {
       return true;
     }

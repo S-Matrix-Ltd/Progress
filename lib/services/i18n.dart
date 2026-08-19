@@ -62,6 +62,11 @@ const Map<String, Map<String, String>> _kStrings = {
   'send_test_notification': {'en': 'Send Test Notification Now', 'bn': 'এখনই টেস্ট নোটিফিকেশন পাঠান'},
   'test_notification_sent': {'en': 'Test notification sent — check your notification panel', 'bn': 'টেস্ট নোটিফিকেশন পাঠানো হয়েছে — নোটিফিকেশন প্যানেল দেখুন'},
   'test_notification_failed': {'en': 'Could not send test notification', 'bn': 'টেস্ট নোটিফিকেশন পাঠানো যায়নি'},
+  'open_battery_settings': {'en': 'Open Battery Settings', 'bn': 'ব্যাটারি সেটিংস খুলুন'},
+  'battery_optimization_hint': {
+    'en': 'If the reminder still doesn\'t arrive on time, open Battery settings above and choose "No restriction" / "Unrestricted" for this app. On some phones (Xiaomi, Oppo, Vivo), also turn on "Autostart" for this app in phone Settings.',
+    'bn': 'রিমাইন্ডার তবেও সময়মতো না এলে, উপরের Battery Settings খুলে এই অ্যাপের জন্য "No restriction"/"Unrestricted" বেছে নিন। কিছু ফোনে (Xiaomi, Oppo, Vivo) ফোনের Settings এ এই অ্যাপের "Autostart"-ও চালু করুন।'
+  },
   'reminder_time': {'en': 'Reminder Time', 'bn': 'রিমাইন্ডার সময়'},
   'calculator': {'en': 'Calculator', 'bn': 'ক্যালকুলেটর'},
   'open_calculator': {'en': 'Open Calculator', 'bn': 'ক্যালকুলেটর খুলুন'},
