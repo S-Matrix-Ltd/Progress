@@ -114,11 +114,9 @@ class ReminderService {
 
   /// Reminder schedule kore, precision fallback shoho:
   /// alarmClock -> exactAllowWhileIdle -> inexactAllowWhileIdle.
-  /// Return kore je mode-e ashole schedule hoyeche seta.
-  /// Diagnostic/test: daily-repeat-er jotil matchDateTimeComponents logic
-  /// bad diye, shudhu ekta ONE-TIME notification 'delay' poriman shomoy
-  /// pore schedule kore. Eta diye bujha jay je alarmClock-based scheduling
-  /// ashole kaj kore kina — daily-repeat-er kono jotilota chara.
+  /// Return kore je mode-e ashole schedule hoyeche seta, ba fail hole
+  /// "failed: <asol exception message>" — jate lukiye na theke asol
+  /// karonta UI-te dekhano jay.
   static Future<String> scheduleOneTimeTest(Duration delay) async {
     await init();
     await _plugin.cancel(998);
@@ -128,6 +126,7 @@ class ReminderService {
       AndroidScheduleMode.exactAllowWhileIdle,
       AndroidScheduleMode.inexactAllowWhileIdle,
     ];
+    String lastError = '';
     for (final mode in modes) {
       try {
         await _plugin.zonedSchedule(
@@ -142,19 +141,18 @@ class ReminderService {
               channelDescription: 'Ajker duty entry deyar reminder',
               importance: Importance.max,
               priority: Priority.high,
-              category: AndroidNotificationCategory.alarm,
-              fullScreenIntent: true,
             ),
           ),
           androidScheduleMode: mode,
           uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         );
         return mode.toString();
-      } catch (_) {
+      } catch (e) {
+        lastError = e.toString();
         continue;
       }
     }
-    return 'failed';
+    return 'failed: $lastError';
   }
 
   static Future<String> scheduleDaily(TimeOfDay time) async {
@@ -167,6 +165,7 @@ class ReminderService {
       AndroidScheduleMode.inexactAllowWhileIdle,
     ];
 
+    String lastError = '';
     for (final mode in modes) {
       try {
         await _plugin.zonedSchedule(
@@ -181,8 +180,6 @@ class ReminderService {
               channelDescription: 'Ajker duty entry deyar reminder',
               importance: Importance.max,
               priority: Priority.high,
-              category: AndroidNotificationCategory.alarm,
-              fullScreenIntent: true,
             ),
           ),
           androidScheduleMode: mode,
@@ -190,12 +187,12 @@ class ReminderService {
           matchDateTimeComponents: DateTimeComponents.time,
         );
         return mode.toString(); // success — ei mode-e schedule hoyeche
-      } catch (_) {
-        // Ei mode fail korle porerta try kora hoy.
+      } catch (e) {
+        lastError = e.toString();
         continue;
       }
     }
-    return 'failed';
+    return 'failed: $lastError';
   }
 
   /// Ekdom akhoni ekta test notification pathay (kono schedule chara) —

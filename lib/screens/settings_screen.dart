@@ -847,9 +847,14 @@ class _ReminderPanelState extends State<ReminderPanel> {
       final mode = await ReminderService.scheduleDaily(TimeOfDay(hour: _settings.reminderHour, minute: _settings.reminderMinute));
       await _refreshPermissionStatus();
       if (!mounted) return;
-      if (mode == 'failed') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(tr('reminder_schedule_failed')), backgroundColor: const Color(0xFFB91C1C)),
+      if (mode.startsWith('failed')) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(tr('reminder_schedule_failed')),
+            content: SingleChildScrollView(child: Text(mode, style: const TextStyle(fontSize: 11))),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('cancel')))],
+          ),
         );
         return;
       }
@@ -889,10 +894,21 @@ class _ReminderPanelState extends State<ReminderPanel> {
     final mode = await ReminderService.scheduleOneTimeTest(const Duration(minutes: 1));
     await _refreshPermissionStatus();
     if (!mounted) return;
+    if (mode.startsWith('failed')) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('test_notification_failed')),
+          content: SingleChildScrollView(child: Text(mode, style: const TextStyle(fontSize: 11))),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('cancel')))],
+        ),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mode == 'failed' ? tr('test_notification_failed') : tr('one_min_test_scheduled')),
-        backgroundColor: mode == 'failed' ? const Color(0xFFB91C1C) : const Color(0xFF047857),
+        content: Text('${tr('one_min_test_scheduled')} ($mode)'),
+        backgroundColor: const Color(0xFF047857),
       ),
     );
   }
