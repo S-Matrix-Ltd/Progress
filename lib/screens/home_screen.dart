@@ -897,6 +897,13 @@ class _HomeScreenState extends State<HomeScreen> {
             final dateLabel = '${d.toString().padLeft(2, '0')}.${month.toString().padLeft(2, '0')}.$year';
             final weekdayLabel = kWeekdayShort[wd % 7];
             return DayRowWidget(
+              // Month/year shoho unique key — eta na thakle month switch
+              // korle purono TextFormField-er "initialValue" reuse hoye
+              // jay, notun OT data thakleo blank/purono dekhay (Flutter
+              // element-diffing same tree-position-e purono widget-i
+              // continue kore, notun initialValue read kore na). Key
+              // change hole Flutter shorasori fresh widget/field banay.
+              key: ValueKey('$year-$month-$d'),
               dateLabel: dateLabel,
               weekdayLabel: weekdayLabel,
               isWeekend: isWeekend,
