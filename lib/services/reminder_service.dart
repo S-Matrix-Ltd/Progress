@@ -136,11 +136,11 @@ class ReminderService {
           fireTime,
           const NotificationDetails(
             android: AndroidNotificationDetails(
-              'daily-entry-reminder',
+              'daily-entry-alarm-v2',
               'Daily Entry Reminder',
               channelDescription: 'Ajker duty entry deyar reminder',
               importance: Importance.max,
-              priority: Priority.high,
+              priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
             ),
           ),
           androidScheduleMode: mode,
@@ -175,11 +175,11 @@ class ReminderService {
           _nextInstanceOf(time),
           const NotificationDetails(
             android: AndroidNotificationDetails(
-              'daily-entry-reminder',
+              'daily-entry-alarm-v2',
               'Daily Entry Reminder',
               channelDescription: 'Ajker duty entry deyar reminder',
               importance: Importance.max,
-              priority: Priority.high,
+              priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
             ),
           ),
           androidScheduleMode: mode,
@@ -207,11 +207,11 @@ class ReminderService {
         'Eta thik moto ashle, notification system kaj kortese.',
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'daily-entry-reminder',
+            'daily-entry-alarm-v2',
             'Daily Entry Reminder',
             channelDescription: 'Ajker duty entry deyar reminder',
             importance: Importance.max,
-            priority: Priority.high,
+            priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
         ),
       );
