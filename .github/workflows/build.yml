@@ -22,76 +22,40 @@ jobs:
         run: |
           sed -i 's/android:label="[^"]*"/android:label="Progress"/' android/app/src/main/AndroidManifest.xml
 
-      - name: Add browser <queries> for url_launcher (Android 11+ package visibility)
-        run: |
-          sed -i 's#    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
-        <uses-permission android:name="android.permission.VIBRATE"/>
-    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
-        <uses-permission android:name="android.permission.VIBRATE"/>
-</manifest>#    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>\n</manifest>#' android/app/src/main/AndroidManifest.xml
-
-      - name: Add INTERNET + notification + exact-alarm permissions to manifest
-        run: |
-          # Flutter-er default generated RELEASE manifest-e INTERNET
-          # permission thake na (shudhu debug build-e auto add hoy) —
-          # tai age eta na thakle "Check for Updates" shoho shob http
-          # call silently fail kore "check your internet" dekhay, joto-i
-          # internet thak na kno.     <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
-        <uses-permission android:name="android.permission.VIBRATE"/>
-    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
-        <uses-permission android:name="android.permission.VIBRATE"/>
-</manifest>-er age reliable-bhabe
-          # insert kora hocche (kono existing line-er upor depend kore na).
-          #
-          # SCHEDULE_EXACT_ALARM + USE_EXACT_ALARM: Daily Reminder-ke
-          # ekdom "Alarm Clock"-er moto EXACT shomoy-e (Doze mode-eo)
-          # baja-nor jonne lage.
-          # RECEIVE_BOOT_COMPLETED: Phone restart hole-o reminder abar
-          # auto-reschedule hoy, otherwise restart-er por miss hoye jeto.
-          # USE_FULL_SCREEN_INTENT + WAKE_LOCK: notification-ta jate
-          # screen-off obosthay-o phone-ke jagiye dekhay, ekdom alarm-er
-          # moto.
-          sed -i 's#    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
-        <uses-permission android:name="android.permission.VIBRATE"/>
-    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
-        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
-        <uses-permission android:name="android.permission.VIBRATE"/>
-</manifest>#    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>\n    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
-          cat android/app/src/main/AndroidManifest.xml
-
-      - name: Configure AndroidManifest receivers
+      - name: Add alarm receivers and permissions to AndroidManifest
         run: |
           python3 - <<'PYEOF'
           path = "android/app/src/main/AndroidManifest.xml"
           with open(path, "r", encoding="utf-8") as f:
               m = f.read()
-          if "ScheduledNotificationReceiver" not in m:
-              receivers = """        <receiver
-                  android:exported="false"
-                  android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-              <receiver
-                  android:exported="false"
-                  android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
-                  <intent-filter>
-                      <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                      <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                  </intent-filter>
-              </receiver>
-          </application>"""
-              m = m.replace("</application>", receivers)
-              with open(path, "w", encoding="utf-8") as f:
-                  f.write(m)
+
+          receivers = """        <receiver
+              android:exported="false"
+              android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+          <receiver
+              android:exported="false"
+              android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+              <intent-filter>
+                  <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                  <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+              </intent-filter>
+          </receiver>
+      </application>"""
+          m = m.replace("</application>", receivers)
+
+          perms = """    <uses-permission android:name="android.permission.INTERNET"/>
+          <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+          <uses-permission android:name="android.permission.VIBRATE"/>
+          <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+          <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+          <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+          <uses-permission android:name="android.permission.WAKE_LOCK"/>
+      </manifest>"""
+          m = m.replace("</manifest>", perms)
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(m)
+          print("AndroidManifest updated with receivers & permissions.")
           PYEOF
 
       - name: Decode release keystore
@@ -107,54 +71,26 @@ jobs:
           storeFile=progress-release.keystore
           EOF
 
-      - name: Wire release signing into build.gradle (permanent-fix for install conflicts)
+      - name: Wire release signing into build.gradle
         run: |
           python3 - <<'PYEOF'
           import re
           path = "android/app/build.gradle"
           with open(path, "r", encoding="utf-8") as f:
               content = f.read()
-
-          # key.properties load korার loader code + signingConfigs{} block
-          # — dutoi 'android {' block-er thik age/pore bosanor jonne ekshathe
-          # inject kora hocche. NOTE: file-er top-e (plugins{} block-er age)
-          # kono statement bosano jabe na — Gradle-er plugins{} DSL rule
-          # onujayi shudhu buildscript{}/pluginManagement{}/plugins{} blocks
-          # allowed thake tar age. Tai loader-ke 'android {' block-er thik
-          # age boshiye eita avoid kora hocche.
-          loader = (
-              'def keystorePropertiesFile = rootProject.file("key.properties")\n'
-              'def keystoreProperties = new Properties()\n'
-              'if (keystorePropertiesFile.exists()) {\n'
-              '    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n'
-              '}\n\n'
-          )
-          signing_block = (
-              '\n    signingConfigs {\n'
-              '        release {\n'
-              '            keyAlias keystoreProperties["keyAlias"]\n'
-              '            keyPassword keystoreProperties["keyPassword"]\n'
-              '            storeFile keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null\n'
-              '            storePassword keystoreProperties["storePassword"]\n'
-              '        }\n'
-              '    }\n'
-          )
+          loader = 'def keystorePropertiesFile = rootProject.file("key.properties")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n\n'
+          signing_block = '\n    signingConfigs {\n        release {\n            keyAlias keystoreProperties["keyAlias"]\n            keyPassword keystoreProperties["keyPassword"]\n            storeFile keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null\n            storePassword keystoreProperties["storePassword"]\n        }\n    }\n'
           if 'keystorePropertiesFile' not in content:
               content = re.sub(r'(android\s*\{)', loader + r'\1' + signing_block, content, count=1)
-
-          # buildTypes.release-er signingConfig-ke debug theke release-e switch koro
-          # (AGP version bhede '=' shoho/chara duitai handle kora hocche).
           content = re.sub(r'signingConfig\s*=?\s*signingConfigs\.debug', 'signingConfig signingConfigs.release', content)
-
           with open(path, "w", encoding="utf-8") as f:
               f.write(content)
-          print("build.gradle patched for release signing.")
           PYEOF
 
       - run: flutter pub get
 
-      - name: Build APK (version-embedded)
-        run: flutter build apk --release --no-shrink --no-shrink --no-shrink --no-shrink --no-shrink --dart-define=APP_VERSION=1.0.${{ github.run_number }}
+      - name: Build APK (no-shrink to protect alarms)
+        run: flutter build apk --release --no-shrink --dart-define=APP_VERSION=1.0.${{ github.run_number }}
 
       - uses: actions/upload-artifact@v4
         with:
