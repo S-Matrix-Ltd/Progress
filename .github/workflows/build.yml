@@ -68,9 +68,31 @@ jobs:
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.QUICKBOOT_POWERON"/></intent-filter></receiver>
         <uses-permission android:name="android.permission.VIBRATE"/>
 </manifest>#    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>\n    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
-          sed -i 's#</application>#<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/><receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver></application>#' android/app/src/main/AndroidManifest.xml
-          sed -i 's|</application>|<receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/><receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver></application>|' android/app/src/main/AndroidManifest.xml
           cat android/app/src/main/AndroidManifest.xml
+
+      - name: Configure AndroidManifest receivers
+        run: |
+          python3 - <<'PYEOF'
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r", encoding="utf-8") as f:
+              m = f.read()
+          if "ScheduledNotificationReceiver" not in m:
+              receivers = """        <receiver
+                  android:exported="false"
+                  android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+              <receiver
+                  android:exported="false"
+                  android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+                  <intent-filter>
+                      <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                      <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                  </intent-filter>
+              </receiver>
+          </application>"""
+              m = m.replace("</application>", receivers)
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(m)
+          PYEOF
 
       - name: Decode release keystore
         run: |
@@ -132,7 +154,7 @@ jobs:
       - run: flutter pub get
 
       - name: Build APK (version-embedded)
-        run: flutter build apk --release --no-shrink --no-shrink --no-shrink --no-shrink --dart-define=APP_VERSION=1.0.${{ github.run_number }}
+        run: flutter build apk --release --no-shrink --no-shrink --no-shrink --no-shrink --no-shrink --dart-define=APP_VERSION=1.0.${{ github.run_number }}
 
       - uses: actions/upload-artifact@v4
         with:
