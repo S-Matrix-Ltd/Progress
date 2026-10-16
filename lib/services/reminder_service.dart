@@ -132,13 +132,13 @@ class ReminderService {
         await _plugin.zonedSchedule(
           998,
           'Test Alarm',
-          'Eta ashle, background scheduling thik moto kaj kortese ($mode).',
+          'Eta arrived, background scheduling is working correctly ($mode).',
           fireTime,
           const NotificationDetails(
             android: AndroidNotificationDetails(
               'daily-entry-alarm-v2',
               'Daily Entry Reminder',
-              channelDescription: 'Ajker duty entry deyar reminder',
+              channelDescription: 'Reminder to submit today's duty entry',
               importance: Importance.max,
               priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
             ),
@@ -171,13 +171,13 @@ class ReminderService {
         await _plugin.zonedSchedule(
           100,
           'Duty & OT Entry',
-          "Ajker duty/OT entry ta din — bhule jaben na!",
+          "Please enter your duty or OT for today — don't forget!",
           _nextInstanceOf(time),
           const NotificationDetails(
             android: AndroidNotificationDetails(
               'daily-entry-alarm-v2',
               'Daily Entry Reminder',
-              channelDescription: 'Ajker duty entry deyar reminder',
+              channelDescription: 'Reminder to submit today's duty entry',
               importance: Importance.max,
               priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
             ),
@@ -204,12 +204,12 @@ class ReminderService {
       await _plugin.show(
         999,
         'Test Notification',
-        'Eta thik moto ashle, notification system kaj kortese.',
+        'If this appears correctly, the notification system is working.',
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'daily-entry-alarm-v2',
             'Daily Entry Reminder',
-            channelDescription: 'Ajker duty entry deyar reminder',
+            channelDescription: 'Reminder to submit today's duty entry',
             importance: Importance.max,
             priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
