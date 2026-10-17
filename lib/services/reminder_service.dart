@@ -138,7 +138,7 @@ class ReminderService {
             android: AndroidNotificationDetails(
               'daily-entry-alarm-v2',
               'Daily Entry Reminder',
-              channelDescription: 'Reminder to submit today's duty entry',
+              channelDescription: 'Reminder to submit todays duty entry',
               importance: Importance.max,
               priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
             ),
@@ -171,13 +171,13 @@ class ReminderService {
         await _plugin.zonedSchedule(
           100,
           'Duty & OT Entry',
-          "Please enter your duty or OT for today — don't forget!",
+          "Please enter your duty or OT for today — do not forget!",
           _nextInstanceOf(time),
           const NotificationDetails(
             android: AndroidNotificationDetails(
               'daily-entry-alarm-v2',
               'Daily Entry Reminder',
-              channelDescription: 'Reminder to submit today's duty entry',
+              channelDescription: 'Reminder to submit todays duty entry',
               importance: Importance.max,
               priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
             ),
@@ -209,7 +209,7 @@ class ReminderService {
           android: AndroidNotificationDetails(
             'daily-entry-alarm-v2',
             'Daily Entry Reminder',
-            channelDescription: 'Reminder to submit today's duty entry',
+            channelDescription: 'Reminder to submit todays duty entry',
             importance: Importance.max,
             priority: Priority.max, playSound: true, enableVibration: true, fullScreenIntent: true, category: AndroidNotificationCategory.alarm, audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
