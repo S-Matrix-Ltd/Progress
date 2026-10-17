@@ -16,7 +16,7 @@ jobs:
         run: flutter create . --platforms=android --project-name progress
 
       - name: Update Kotlin version
-        run: sed -i -E "/org.jetbrains.kotlin.android/ s/version [\"'][^\"']*[\"']/version '2.1.0'/" android/settings.gradle
+        run: sed -i -E "/org.jetbrains.kotlin.android/ s/version [\"'][^\"']*[\"']/version '2.0.20'/" android/settings.gradle
 
       - name: Set app display name to "Progress"
         run: sed -i 's/android:label="[^"]*"/android:label="Progress"/' android/app/src/main/AndroidManifest.xml
