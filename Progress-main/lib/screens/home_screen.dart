@@ -1,0 +1,1018 @@
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
+import '../models/app_settings.dart';
+import '../models/day_entry.dart';
+import '../models/user_profile.dart';
+import '../models/theme_option.dart';
+import '../services/storage_service.dart';
+import '../services/settings_service.dart';
+import '../services/auth_service.dart';
+import '../services/i18n.dart';
+import '../services/currency_service.dart';
+import '../services/update_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../constants.dart';
+import '../services/pdf_service.dart';
+import '../widgets/day_row_widget.dart';
+import 'settings_screen.dart';
+
+const List<String> kMonthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+const List<String> kWeekdayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _storage = StorageService();
+  final _auth = AuthService();
+  final _settingsService = SettingsService();
+  final _pdfService = PdfService();
+  final _currencyService = CurrencyService();
+  final _updateService = UpdateService();
+
+  UserProfile? _profile;
+  AppSettings _appSettings = AppSettings();
+  double _usdRate = 0;
+  bool _monthExpanded = false;
+  bool _yearExpanded = false;
+
+  /// Mark/unmark ba OT hour change korle true hoy, explicit "Save"
+  /// button chapa na porjonto storage-e persist hoy na.
+  bool _dirty = false;
+
+  static const _lastUpdateCheckKey = 'auto-update-check-last-v1';
+
+  void _onGlobalSettingsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openSettings() async {
+    if (!(await _confirmDiscardIfDirty())) return;
+    _dirty = false;
+    final result = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      slideInRoute(const SettingsScreen()),
+    );
+    // Settings e rate/profile change hote pare, tai fire ei firey eshe reload.
+    if (!mounted) return;
+    await _loadProfile();
+    await _loadAppSettings();
+    if (result != null && result['year'] != null && result['month'] != null) {
+      setState(() {
+        year = result['year'] as int;
+        month = result['month'] as int;
+      });
+    }
+    await _loadMonth();
+  }
+
+  int year = DateTime.now().year;
+  int month = DateTime.now().month;
+
+  List<DayEntry> days = [];
+  final rateOTCtrl = TextEditingController(text: '0');
+  final rateNightCtrl = TextEditingController(text: '0');
+  final rateOFFCtrl = TextEditingController(text: '0');
+  final rateGrossCtrl = TextEditingController(text: '0');
+
+  double totOT = 0, totalAmount = 0;
+  int totNight = 0, totDuty = 0, totDayOff = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMonth();
+    _loadProfile();
+    _loadAppSettings();
+    // Language/Theme onno kono screen theke change hole (ba je kono
+    // karone shathe shathe rebuild na hole) — ei listener fail-safe
+    // hishebe Home screen force rebuild kore.
+    themeNotifier.addListener(_onGlobalSettingsChanged);
+    languageNotifier.addListener(_onGlobalSettingsChanged);
+    _autoCheckUpdateSilently();
+  }
+
+  /// App khulleyi background-e ekbar (din-e ekbar-i, baar baar network
+  /// call na kore) update check kore. Fail hole (network/DNS issue etc.)
+  /// UI-te kono error dekhano hoy na — chup chap ignore kore, karon eta
+  /// automatic background check, user kono button chapeni. Update paoa
+  /// gele shudhu tokhon ekta dialog dekhay.
+  Future<void> _autoCheckUpdateSilently() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastMs = prefs.getInt(_lastUpdateCheckKey) ?? 0;
+      final last = DateTime.fromMillisecondsSinceEpoch(lastMs);
+      if (DateTime.now().difference(last) < const Duration(hours: 20)) return;
+      await prefs.setInt(_lastUpdateCheckKey, DateTime.now().millisecondsSinceEpoch);
+
+      final result = await _updateService.checkForUpdate(kAppVersion);
+      if (!result.success || !result.hasUpdate) return; // chup chap ignore
+      if (!mounted) return;
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('update_available_title')),
+          content: Text('${tr('auto_update_found_body')} v${result.latestVersion}'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('later'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('update_now'))),
+          ],
+        ),
+      );
+      if (proceed == true) await _openReleasesUrl();
+    } catch (_) {
+      // Silent — background check, user-facing error dekhano hobe na.
+    }
+  }
+
+  @override
+  void dispose() {
+    themeNotifier.removeListener(_onGlobalSettingsChanged);
+    languageNotifier.removeListener(_onGlobalSettingsChanged);
+    super.dispose();
+  }
+
+  Future<void> _loadAppSettings() async {
+    final s = await _settingsService.load();
+    if (!mounted) return;
+    setState(() => _appSettings = s);
+    if (s.currency == 'USD') _loadUsdRate();
+  }
+
+  Future<void> _loadUsdRate() async {
+    final rate = await _currencyService.getBdtToUsdRate();
+    if (!mounted) return;
+    setState(() => _usdRate = rate);
+  }
+
+  Future<void> _loadProfile() async {
+    final p = await _auth.getProfile();
+    if (!mounted) return;
+    setState(() => _profile = p);
+  }
+
+  int _daysInMonth(int y, int m) => DateTime(y, m + 1, 0).day;
+
+  Future<void> _loadMonth() async {
+    final count = _daysInMonth(year, month);
+    final saved = await _storage.loadMonth(year, month);
+    final rates = await _storage.loadRates();
+    if (rates != null) {
+      rateOTCtrl.text = _numStr(rates.rateOT);
+      rateNightCtrl.text = _numStr(rates.rateNight);
+      rateOFFCtrl.text = _numStr(rates.rateOFF);
+      rateGrossCtrl.text = _numStr(rates.rateGross);
+    }
+    setState(() {
+      days = saved ?? List.generate(count, (_) => DayEntry());
+      if (days.length != count) {
+        // Mash mash er upor month change hole list size adjust
+        final adjusted = List.generate(count, (i) => i < days.length ? days[i] : DayEntry());
+        days = adjusted;
+      }
+    });
+    _recalc();
+  }
+
+  String _numStr(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
+
+  void _recalc() {
+    final rOT = double.tryParse(rateOTCtrl.text) ?? 0;
+    final rNight = double.tryParse(rateNightCtrl.text) ?? 0;
+    final rOFF = double.tryParse(rateOFFCtrl.text) ?? 0;
+    final rGross = double.tryParse(rateGrossCtrl.text) ?? 0;
+
+    double ot = 0;
+    int night = 0, duty = 0, dayoff = 0;
+    for (final e in days) {
+      ot += e.ot;
+      if (e.hasNight) night++;
+      if (e.hasDuty) duty++;
+      if (e.hasDayoff) dayoff++;
+    }
+    setState(() {
+      totOT = ot;
+      totNight = night;
+      totDuty = duty;
+      totDayOff = dayoff;
+      totalAmount = (ot * rOT) + (night * rNight) + (duty * rOFF) + rGross;
+    });
+    // Age ekhane protibar _autoSave() call hoto (autosave-on-every-tap).
+    // Ekhon mark/unmark ba OT change shudhu local state/total update kore
+    // — actual storage-e persist shudhu explicit "Save" button chaple hoy
+    // (double confirmation-er por), tai ekhane autosave call kora hoy na.
+  }
+
+  Future<void> _autoSave() async {
+    await _storage.saveMonth(year, month, days);
+    await _storage.saveRates(RateSettings(
+      rateOT: double.tryParse(rateOTCtrl.text) ?? 0,
+      rateNight: double.tryParse(rateNightCtrl.text) ?? 0,
+      rateOFF: double.tryParse(rateOFFCtrl.text) ?? 0,
+      rateGross: double.tryParse(rateGrossCtrl.text) ?? 0,
+    ));
+  }
+
+  /// Password prompt — Reset o Unmark-er moto sensitive kaj-e use hoy.
+  Future<bool> _promptPassword(String title) async {
+    if (!mounted) return false;
+    final ctrl = TextEditingController();
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          autofocus: true,
+          decoration: InputDecoration(labelText: tr('password'), border: const OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
+    );
+    if (proceed != true) return false;
+    final ok = await _auth.verifyPassword(ctrl.text);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr('wrong_password')), backgroundColor: const Color(0xFFB91C1C)));
+    }
+    return ok;
+  }
+
+  /// Security setting respect kore: "Require Password" ON thakle password
+  /// prompt dekhay, OFF thakle shudhu ekta shadharon Yes/No confirm dialog.
+  /// Kono khetreই confirmation bad dey na — obossoi kichu na kichu jiggesh kore.
+  Future<bool> _confirmAction(String title, {String? plainTitle}) async {
+    if (_appSettings.requirePasswordOnSave) {
+      return _promptPassword(title);
+    }
+    if (!mounted) return false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(plainTitle ?? title),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _onStatusTap(int idx, String type) async {
+    final entry = days[idx];
+    final statuses = List<String>.from(entry.statuses);
+    final marking = !statuses.contains(type);
+
+    if (marking) {
+      if (type == 'dayoff') {
+        if (statuses.contains('night') || statuses.contains('duty')) {
+          _showMsg(tr('unmark_dayoff_first'));
+          return;
+        }
+      } else if (statuses.contains('dayoff')) {
+        _showMsg(tr('dayoff_blocks_others'));
+        return;
+      }
+    }
+
+    // Mark ba Unmark — dutokheteই ekhon obossoi confirmation lagbe
+    // (age shudhu Unmark-e password lagto, Mark-e kichuই lagto na).
+    final ok = await _confirmAction(
+      marking ? tr('mark_password_title') : tr('unmark_password_title'),
+      plainTitle: marking ? tr('mark_confirm_title') : tr('unmark_confirm_title'),
+    );
+    if (!ok) return;
+
+    if (marking) {
+      if (type == 'dayoff') {
+        statuses
+          ..clear()
+          ..add('dayoff');
+      } else {
+        statuses.add(type);
+      }
+    } else {
+      statuses.remove(type);
+    }
+    setState(() {
+      entry.statuses = statuses;
+      _dirty = true;
+    });
+    _recalc();
+  }
+
+  void _showMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: const Color(0xFFB91C1C),
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  void _showSuccessMsg(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFF047857)),
+    );
+  }
+
+  /// Home screen theke chole jawar age (month/year switch, Settings-e
+  /// jawa) — unsaved (mark/unmark kora kintu Save na kora) change thakle
+  /// shatorko kore, na hole shuture eshe chole jay.
+  Future<bool> _confirmDiscardIfDirty() async {
+    if (!_dirty) return true;
+    if (!mounted) return false;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('unsaved_changes_title')),
+        content: Text(tr('unsaved_home_body')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('stay'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('leave'))),
+        ],
+      ),
+    );
+    return leave ?? false;
+  }
+
+  /// Explicit "Save" button — double confirmation flow:
+  /// 1) "Save changes?" shadharon confirm
+  /// 2) Security setting onujayi password OR abar ekta confirm
+  /// Dutoyi "hae" hole tobei actual storage-e persist hoy.
+  Future<void> _handleSave() async {
+    if (!_dirty) {
+      _showMsg(tr('no_changes_to_save'));
+      return;
+    }
+    final step1 = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('save_confirm_title_1')),
+        content: Text(tr('save_confirm_body_1')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('confirm'))),
+        ],
+      ),
+    );
+    if (step1 != true) return;
+
+    final step2 = await _confirmAction(
+      tr('save_password_title'),
+      plainTitle: tr('save_confirm_title_2'),
+    );
+    if (!step2) return;
+
+    await _autoSave();
+    if (!mounted) return;
+    setState(() => _dirty = false);
+    _showSuccessMsg(tr('changes_saved_msg'));
+  }
+
+  Future<void> _handleReset() async {
+    final verified = await _confirmAction(tr('reset_month_password_title'), plainTitle: tr('reset_month_title'));
+    if (!verified) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('reset_month_title')),
+        content: Text('${trMonthNames[month - 1]} $year ${tr('reset_month_confirm')}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('reset'), style: const TextStyle(color: Color(0xFFB91C1C)))),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      setState(() {
+        days = List.generate(_daysInMonth(year, month), (_) => DayEntry());
+        _dirty = false;
+      });
+      _recalc();
+      await _autoSave();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(14),
+          children: [
+            _header(),
+            const SizedBox(height: 14),
+            _monthPicker(),
+            const SizedBox(height: 14),
+            _dayTableCard(),
+            const SizedBox(height: 14),
+            _summaryGrid(),
+            const SizedBox(height: 14),
+            _totalDisplay(),
+            const SizedBox(height: 14),
+            _actionButtons(),
+            const SizedBox(height: 14),
+            _colorLegend(),
+            const SizedBox(height: 14),
+            _footer(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleExportPdf() async {
+    final rates = RateSettings(
+      rateOT: double.tryParse(rateOTCtrl.text) ?? 0,
+      rateNight: double.tryParse(rateNightCtrl.text) ?? 0,
+      rateOFF: double.tryParse(rateOFFCtrl.text) ?? 0,
+      rateGross: double.tryParse(rateGrossCtrl.text) ?? 0,
+    );
+    final isUsd = _appSettings.currency == 'USD';
+    final pdfAmount = isUsd ? totalAmount * _usdRate : totalAmount;
+    await _pdfService.exportMonth(
+      profile: _profile,
+      year: year,
+      month: month,
+      days: days,
+      rates: rates,
+      totOT: totOT,
+      totNight: totNight,
+      totDuty: totDuty,
+      totDayOff: totDayOff,
+      totalAmount: pdfAmount,
+      currencyCode: _appSettings.currency,
+    );
+  }
+
+  Widget _colorLegend() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _legendChip(kNight, tr('night_duty')),
+            const SizedBox(width: 12),
+            _legendChip(kDuty, tr('regular_duty')),
+            const SizedBox(width: 12),
+            _legendChip(kDayoff, tr('day_off')),
+            const SizedBox(width: 12),
+            _legendChip(kAmberCombo, tr('night_plus_duty')),
+            const SizedBox(width: 12),
+            _legendChip(kWeekendBg, tr('weekend')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legendChip(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 11, height: 11, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+        const SizedBox(width: 5),
+        Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+      ],
+    );
+  }
+
+  Widget _currencyToggle() {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _currencyPill('BDT'),
+          _currencyPill('USD'),
+        ],
+      ),
+    );
+  }
+
+  Widget _currencyPill(String code) {
+    final selected = _appSettings.currency == code;
+    return GestureDetector(
+      onTap: () => _switchCurrency(code),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(code, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: selected ? const Color(0xFF0F172A) : Colors.white70)),
+      ),
+    );
+  }
+
+  Future<void> _switchCurrency(String code) async {
+    if (_appSettings.currency == code) return;
+    setState(() => _appSettings.currency = code);
+    await _settingsService.save(_appSettings);
+    if (code == 'USD') _loadUsdRate();
+  }
+
+  Widget _footer() {
+    return Column(
+      children: [
+        Text('${tr('version_label')} $kAppVersion', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: _handleCheckUpdate,
+          child: Text(tr('check_updates'), style: const TextStyle(fontSize: 11.5)),
+        ),
+        const SizedBox(height: 2),
+        Text(kDeveloperCredit, style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8))),
+        Text(kCopyrightNotice, style: const TextStyle(fontSize: 9.5, color: Color(0xFFB0B8C4))),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Future<void> _handleCheckUpdate() async {
+    _showMsg(tr('checking_updates'));
+    final result = await _updateService.checkForUpdate(kAppVersion);
+    if (!mounted) return;
+
+    if (!result.success) {
+      // Raw exception ar dekhano hocche na — user-friendly message,
+      // r chaile shorasori releases page open korার fallback option.
+      final openAnyway = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('update_check_failed_title')),
+          content: Text(tr('update_check_failed_body')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('cancel'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('open_releases_page'))),
+          ],
+        ),
+      );
+      if (openAnyway == true) await _openReleasesUrl();
+      return;
+    }
+    if (!result.hasUpdate) {
+      _showMsg(tr('no_update_available'));
+      return;
+    }
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('update_available_title')),
+        content: Text('${tr('update_available_body')} v${result.latestVersion}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('later'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('update_now'))),
+        ],
+      ),
+    );
+    if (proceed != true) return;
+    await _openReleasesUrl();
+  }
+
+  Future<void> _openReleasesUrl() async {
+    final uri = Uri.parse(kReleasesUrl);
+    // canLaunchUrl() maje-maje custom ROM/Android 11+ package-visibility
+    // restriction-er karone bhul kore 'false' dey, tai direct launchUrl
+    // try kore dekha hocche, fail korle tobei error dekhano hobe.
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _showMsg(tr('link_open_failed'));
+    } catch (_) {
+      if (mounted) _showMsg(tr('link_open_failed'));
+    }
+  }
+
+  Widget _header() {
+    final name = (_profile?.name.isNotEmpty ?? false) ? _profile!.name.toUpperCase() : '';
+    final id = _profile?.employeeId ?? '';
+    final company = _profile?.company ?? '';
+    final address = _profile?.address ?? '';
+    final opt = themeOptionFor(themeNotifier.value);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: opt.headerGradient,
+        ),
+        boxShadow: [BoxShadow(color: opt.primary.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(tr('header_title'),
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, height: 1.25)),
+                    const SizedBox(height: 4),
+                    Text(tr('header_subtitle'),
+                        style: const TextStyle(color: Color(0xFFA5F3FC), fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _openSettings,
+                icon: const Icon(Icons.menu, color: Colors.white70, size: 24),
+                tooltip: tr('settings'),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          if (name.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.16)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.person, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name,
+                            style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                            overflow: TextOverflow.ellipsis),
+                        if (id.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text('ID: $id', style: const TextStyle(color: Color(0xFFCBD5F5), fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                        if (company.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(company, style: const TextStyle(color: Color(0xFFCBD5F5), fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                        if (address.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(address,
+                              style: const TextStyle(color: Color(0xFFA5B4D6), fontSize: 11, height: 1.3),
+                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _monthPicker() {
+    final opt = themeOptionFor(themeNotifier.value);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: opt.primary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border(left: BorderSide(color: opt.primary, width: 4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_month, size: 18, color: opt.primary),
+              const SizedBox(width: 10),
+              Expanded(child: Text(tr('month_year'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+              _pickerChip(trMonthNames[month - 1], _monthExpanded, () {
+                setState(() {
+                  _monthExpanded = !_monthExpanded;
+                  _yearExpanded = false;
+                });
+              }),
+              const SizedBox(width: 8),
+              _pickerChip('$year', _yearExpanded, () {
+                setState(() {
+                  _yearExpanded = !_yearExpanded;
+                  _monthExpanded = false;
+                });
+              }),
+            ],
+          ),
+          // Picker box-er thik nichei inline-e expand hoy (bottom-sheet
+          // popup na) — select korle abar compress hoye close hoye jay.
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _monthExpanded
+                ? _monthExpandGrid(opt.primary)
+                : (_yearExpanded ? _yearExpandGrid(opt.primary) : const SizedBox.shrink()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pickerChip(String label, bool expanded, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFCBD5E1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 4),
+            AnimatedRotation(
+              turns: expanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: const Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _monthExpandGrid(Color primary) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: List.generate(12, (i) {
+          final selected = (i + 1) == month;
+          return _pickChip(trMonthNames[i], selected, primary, () async {
+            if (!(await _confirmDiscardIfDirty())) return;
+            setState(() {
+              month = i + 1;
+              _monthExpanded = false;
+              _dirty = false;
+            });
+            _loadMonth();
+          });
+        }),
+      ),
+    );
+  }
+
+  Widget _yearExpandGrid(Color primary) {
+    final years = List.generate(11, (i) => DateTime.now().year - 5 + i);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: years.map((y) {
+          final selected = y == year;
+          return _pickChip('$y', selected, primary, () async {
+            if (!(await _confirmDiscardIfDirty())) return;
+            setState(() {
+              year = y;
+              _yearExpanded = false;
+              _dirty = false;
+            });
+            _loadMonth();
+          });
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _pickChip(String label, bool selected, Color primary, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? primary : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: selected ? primary : const Color(0xFFCBD5E1)),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : const Color(0xFF334155))),
+      ),
+    );
+  }
+
+  Widget _dayTableCard() {
+    final opt = themeOptionFor(themeNotifier.value);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border(left: BorderSide(color: opt.primary, width: 4)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [opt.headerGradient[1], opt.headerGradient.last]),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              children: [
+                Expanded(flex: 3, child: Text(tr('col_date'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900), textAlign: TextAlign.left, overflow: TextOverflow.ellipsis)),
+                Expanded(flex: 1, child: Text(tr('col_ot'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900), textAlign: TextAlign.center)),
+                Expanded(flex: 2, child: Text(tr('col_night'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
+                Expanded(flex: 2, child: Text(tr('col_duty'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
+                Expanded(flex: 2, child: Text(tr('col_off'), style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w900, height: 1.15), textAlign: TextAlign.center, maxLines: 2, softWrap: true)),
+              ],
+            ),
+          ),
+          ...List.generate(days.length, (i) {
+            final d = i + 1;
+            final date = DateTime(year, month, d);
+            final wd = date.weekday; // Mon=1..Sun=7
+            final isWeekend = wd == 4 || wd == 5; // Thu/Fri
+            final dateLabel = '${d.toString().padLeft(2, '0')}.${month.toString().padLeft(2, '0')}.$year';
+            final weekdayLabel = kWeekdayShort[wd % 7];
+            return DayRowWidget(
+              dateLabel: dateLabel,
+              weekdayLabel: weekdayLabel,
+              isWeekend: isWeekend,
+              isEven: i % 2 == 1,
+              entry: days[i],
+              onOtChanged: (v) {
+                days[i].ot = v;
+                _dirty = true;
+                _recalc();
+              },
+              onStatusTap: (type) => _onStatusTap(i, type),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryGrid() {
+    return Row(
+      children: [
+        _sumChip('${_trimZero(totOT)}', tr('ot_hours'), const Color(0xFF047857)),
+        _sumChip('$totNight', tr('night'), const Color(0xFF7C3AED)),
+        _sumChip('$totDuty', tr('duty'), const Color(0xFF0369A1)),
+        _sumChip('$totDayOff', tr('day_off'), const Color(0xFFB91C1C)),
+      ],
+    );
+  }
+
+  String _trimZero(double n) => n == n.roundToDouble() ? n.toInt().toString() : n.toString();
+
+  Widget _sumChip(String val, String label, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color, width: 2),
+        ),
+        child: Column(
+          children: [
+            Text(val, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF475569))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _totalDisplay() {
+    final opt = themeOptionFor(themeNotifier.value);
+    final isUsd = _appSettings.currency == 'USD';
+    final displayAmount = isUsd ? totalAmount * _usdRate : totalAmount;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [const Color(0xFF0F172A), const Color(0xFF1E293B), opt.primary.withOpacity(0.9)]),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // Currency (BDT/USD) toggle ekhon Total Amount box-er upor-right
+          // corner-e — Settings-e na giye shorasori ekhan theke switch kora jay.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [_currencyToggle()],
+          ),
+          const SizedBox(height: 4),
+          Text(tr('total_amount'), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          const SizedBox(height: 4),
+          Text(
+            '${_appSettings.currency} ${displayAmount.toStringAsFixed(2)}',
+            style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 21, fontWeight: FontWeight.w900),
+          ),
+          if (isUsd && _usdRate == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(tr('rate_loading'), style: const TextStyle(color: Color(0xFF64748B), fontSize: 9.5)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionButtons() {
+    final opt = themeOptionFor(themeNotifier.value);
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _handleSave,
+            icon: Icon(_dirty ? Icons.save : Icons.save_outlined, size: 19),
+            label: Text(_dirty ? '${tr('save_changes')} •' : tr('save_changes')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _dirty ? const Color(0xFF047857) : opt.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _handleExportPdf,
+                icon: const Icon(Icons.picture_as_pdf, size: 18),
+                label: Text(tr('export_pdf')),
+                style: ElevatedButton.styleFrom(backgroundColor: opt.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _handleReset,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(tr('reset')),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFEF2F2), foregroundColor: const Color(0xFFB91C1C), padding: const EdgeInsets.symmetric(vertical: 14)),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
