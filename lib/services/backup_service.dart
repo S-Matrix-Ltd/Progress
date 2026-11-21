@@ -13,6 +13,12 @@ const String _kBackupFileName = 'progress-backup.json';
 const String _kAutoBackupKey = 'backup-auto-enabled-v1';
 const String _kLastBackupKey = 'backup-last-time-v1';
 
+class _Session {
+  final GoogleSignInAccount acc;
+  final Map<String, String> h;
+  _Session(this.acc, this.h);
+}
+
 class BackupResult {
   final bool ok;
   final String message;
@@ -68,6 +74,22 @@ class BackupService {
     return {...h};
   }
 
+  /// Silent sign-in-er account diye token neyar shomoy kokhono kokhono
+  /// native error ashe ("main thread ... deadlock"). Tokhon sign-out kore
+  /// notun kore sign-in kore ekbar abar try kore.
+  static Future<_Session?> _session() async {
+    var acc = _gsi.currentUser ?? await _gsi.signInSilently() ?? await _gsi.signIn();
+    if (acc == null) return null;
+    try {
+      return _Session(acc, await _headers(acc));
+    } catch (_) {
+      await _gsi.signOut();
+      acc = await _gsi.signIn();
+      if (acc == null) return null;
+      return _Session(acc, await _headers(acc));
+    }
+  }
+
   static Future<String?> _findFileId(Map<String, String> h) async {
     final uri = Uri.https('www.googleapis.com', '/drive/v3/files', {
       'spaces': 'appDataFolder',
@@ -106,9 +128,10 @@ class BackupService {
   /// Backup now. Account na thakle sign-in dekhabe.
   static Future<BackupResult> backupNow() async {
     try {
-      final acc = await signIn();
-      if (acc == null) return BackupResult(false, 'Sign-in cancelled');
-      final h = await _headers(acc);
+      final sess = await _session();
+      if (sess == null) return BackupResult(false, 'Sign-in cancelled');
+      final acc = sess.acc;
+      final h = sess.h;
       final content = await _buildJson();
       final id = await _findFileId(h);
       http.Response res;
@@ -156,9 +179,10 @@ class BackupService {
   /// shathe login state-o set hoy, tai direct Home-e jawa jay.
   static Future<BackupResult> restore({bool markLoggedIn = false}) async {
     try {
-      final acc = await signIn();
-      if (acc == null) return BackupResult(false, 'Sign-in cancelled');
-      final h = await _headers(acc);
+      final sess = await _session();
+      if (sess == null) return BackupResult(false, 'Sign-in cancelled');
+      final acc = sess.acc;
+      final h = sess.h;
       final id = await _findFileId(h);
       if (id == null) {
         return BackupResult(false, 'No backup found for ${acc.email}');
