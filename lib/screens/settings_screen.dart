@@ -10,6 +10,7 @@ import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../services/reminder_service.dart';
 import '../services/i18n.dart';
+import 'backup_screen.dart';
 import 'change_password_screen.dart';
 import 'data_history_screen.dart';
 import 'login_screen.dart';
@@ -219,6 +220,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(height: 1),
             _navTile(Icons.lock_outline, tr('change_password'), 'Update account password', () async {
               await Navigator.push(context, slideInRoute(const ChangePasswordScreen()));
+            }, color: primary),
+            const Divider(height: 1),
+            _navTile(Icons.cloud_sync_outlined, 'Backup & Restore', 'Google Drive backup', () async {
+              await Navigator.push(context, slideInRoute(const BackupScreen()));
             }, color: primary),
             const Divider(height: 1),
             _navTile(Icons.history, tr('data_history'), tr('data_history_desc'), () async {

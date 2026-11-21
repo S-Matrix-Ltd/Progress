@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/backup_service.dart';
 import '../services/i18n.dart';
 import 'home_screen.dart';
 
@@ -61,6 +62,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
     if (error != null) {
       _showMsg(error);
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _restoreFromDrive() async {
+    setState(() => _loading = true);
+    final r = await BackupService.restore(markLoggedIn: true);
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (!r.ok) {
+      _showMsg(r.message);
       return;
     }
     Navigator.of(context).pushAndRemoveUntil(
@@ -151,6 +167,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                   child: Text(tr('register'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                                 ),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: _loading ? null : _restoreFromDrive,
+                            icon: const Icon(Icons.cloud_download_outlined),
+                            label: const Text('Restore from Google Drive'),
+                          ),
                           const SizedBox(height: 14),
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/day_entry.dart';
+import 'backup_service.dart';
 
 class StorageService {
   static String monthKey(int year, int month) =>
@@ -11,6 +12,7 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     final list = data.map((e) => e.toJson()).toList();
     await prefs.setString(monthKey(year, month), jsonEncode(list));
+    BackupService.scheduleAutoBackup();
   }
 
   Future<List<DayEntry>?> loadMonth(int year, int month) async {
@@ -24,6 +26,7 @@ class StorageService {
   Future<void> saveRates(RateSettings rates) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(ratesKey, jsonEncode(rates.toJson()));
+    BackupService.scheduleAutoBackup();
   }
 
   Future<RateSettings?> loadRates() async {
